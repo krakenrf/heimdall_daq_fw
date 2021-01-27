@@ -1,0 +1,13 @@
+Firmware/_logs/*.log
+Firmware/_logs/*.html
+Firmware/_data_control/*
+Firmware/_test_vectors/*.iq
+Firmware/_daq_core/*.out
+Firmware/_daq_core/*.o
+Firmware/_daq_core/*.a
+Firmware/_daq_core/__pycache__/*.pyc
+Firmware/_daq_core/__pycache__/*.cpython-35.pyc
+Fimrware/_daq_core/__pycache__/*
+Firmware/_testing/unit_test/__pycache__/*
+Firmware/_testing/__pycache__/*
+Firmware/_testing/test_logs/*
