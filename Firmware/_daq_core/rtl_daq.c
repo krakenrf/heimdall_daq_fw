@@ -670,10 +670,6 @@ int main( int argc, char** argv )
             /* Noise source switch request */
             if (last_noise_source_state != noise_source_state && config.en_noise_source_ctr==1)
             {
-                /*
-                TODO: Currently the bias tee (noise source) has to be enabled in all Kerberos SDRs
-                if there are multiple in the system. This hardware issue will be resolved in later versions.
-                */
                 rtl_rec = &rtl_receivers[ctr_channel_dev_index];
                 if (noise_source_state == 1){
                     rtlsdr_set_gpio(rtl_rec->dev, 1, 0);
@@ -683,6 +679,13 @@ int main( int argc, char** argv )
                     rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
                     log_info("Noise source turned off ");
                 }
+                /*
+                Currently the bias tee (noise source) has to be enabled in all Kerberos SDRs
+                if there are multiple in the system. This hardware issue will be resolved in later versions.
+                If you are using "older" (version < 2.0) Kerberos SDRs, uncomment this section to properly 
+                control the noise source.
+                */
+                /*
                 if(ch_no>4)
                 {
                     log_warn("Noise source is controlled on the second Kerberos SDR as well");
@@ -692,6 +695,7 @@ int main( int argc, char** argv )
                     else if(noise_source_state == 0)
                         rtlsdr_set_gpio(rtl_rec_aux->dev, 0, 0);
                 }
+                */
             }
             last_noise_source_state = noise_source_state;
         }

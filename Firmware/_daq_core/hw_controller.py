@@ -165,7 +165,7 @@ class HWC():
         gains_init_ind = list(map(int, gains_init_str))
         # -> Channel number check
         if len(gains_init_ind) != self.M:
-            logging.error("Channel number missmatch when reading initial gain values")
+            logging.warning("Channel number missmatch when reading initial gain values")
             logging.warning("Gain values leaved in default state")
             self.gains=[0]*self.M
             self.last_gains=[0]*self.M

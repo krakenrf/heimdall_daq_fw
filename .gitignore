@@ -1,6 +1,7 @@
 Firmware/_logs/*.log
 Firmware/_logs/*.html
 Firmware/_data_control/*
+!Firmware/_data_control/iq_track_lock
 Firmware/_test_vectors/*.iq
 Firmware/_daq_core/*.out
 Firmware/_daq_core/*.o
