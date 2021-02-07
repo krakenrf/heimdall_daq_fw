@@ -367,8 +367,13 @@ void *read_thread_entry(void *arg)
             log_error("Failed to set sample rate: %s", strerror(errno));
         }
         
-        /*Set noise source into the default off state*/
-        rtlsdr_set_gpio(dev,0,0);
+        /*Set all gpios into the default off state*/
+        rtlsdr_set_gpio(dev, 0, 1);
+        rtlsdr_set_gpio(dev, 0, 2);
+        rtlsdr_set_gpio(dev, 0, 3);
+        rtlsdr_set_gpio(dev, 0, 4);
+        rtlsdr_set_gpio(dev, 0, 5);
+        rtlsdr_set_gpio(dev, 0, 6);
 
         /* Reset buffers */
         if (rtlsdr_reset_buffer(dev) !=0)
