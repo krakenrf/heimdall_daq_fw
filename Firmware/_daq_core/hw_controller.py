@@ -585,7 +585,8 @@ class CtrIfaceServer(threading.Thread):
 
         # Control interface server parameters
         self.ctr_iface_port_no = 5001 # TODO: Set this port number from the ini file
-        self.ctr_iface_socket =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)                
+        self.ctr_iface_socket =  socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.ctr_iface_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.ctr_iface_addr = ("", self.ctr_iface_port_no)
         self.M = M
         self.status=True
