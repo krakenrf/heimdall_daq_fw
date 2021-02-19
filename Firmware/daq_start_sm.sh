@@ -6,6 +6,8 @@
 #   License : GNU GPL V3
 #   Authors: Tamas Peto, Carl Laufer
 
+sysctl -w kernel.sched_rt_runtime_us=-1
+
 # Read config ini file
 en_squelch=$(awk -F "=" '/en_squelch/ {print $2}' daq_chain_config.ini)
 out_data_iface_type=$(awk -F "=" '/out_data_iface_type/ {print $2}' daq_chain_config.ini)
@@ -111,26 +113,26 @@ fi
 # Start main program chain -Thread 0 Normal (non squelch mode)
 echo "Starting DAQ Subsystem"
 chrt -f 99 _daq_core/rtl_daq.out 2> _logs/rtl_daq.log | \
-_daq_core/sync.out 2>_logs/sync.log | \
-_daq_core/rebuffer.out 0 2> _logs/rebuffer.log &
+chrt -f 99 _daq_core/sync.out 2>_logs/sync.log | \
+chrt -f 99 _daq_core/rebuffer.out 0 2> _logs/rebuffer.log &
 
 # Decimator - Thread 1
 chrt -f 99 _daq_core/decimate.out 2> _logs/decimator.log &
 
 if [ $en_squelch = 1 ]; then
-    _daq_core/squelch.out 0 2> _logs/squelch.log &
+    chrt -f 99 _daq_core/squelch.out 0 2> _logs/squelch.log &
 fi
 
 # Delay synchronizer - Thread 2
-python3 _daq_core/delay_sync.py 2> _logs/delay_sync.log &
+chrt -f 99 python3 _daq_core/delay_sync.py 2> _logs/delay_sync.log &
 
 # Hardware Controller data path - Thread 3
-sudo python3 _daq_core/hw_controller.py 2> _logs/hwc.log &
+chrt -f 99 sudo python3 _daq_core/hw_controller.py 2> _logs/hwc.log &
 # root priviliges are needed to drive the i2c master
 
 if [ $out_data_iface_type = eth ]; then
     echo "Output data interface: IQ ethernet server"
-    _daq_core/iq_server.out 2>_logs/iq_server.log &
+    chrt -f 99 _daq_core/iq_server.out 2>_logs/iq_server.log &
 elif [ $out_data_iface_type = shmem ]; then
     echo "Output data interface: Shared memory"
 fi
