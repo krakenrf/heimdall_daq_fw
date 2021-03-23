@@ -135,7 +135,7 @@ blocks = 10000
 block_size = N_daq*2    
 rf_freq = 300 *10**6 # Only used in the correspondig header field
 fs  = 2.4 *10**6 # Sampling frequency [Hz]
-sig_type = "pulse" #"none" / "noise" / "cw" / "swept-cw" / "pulse"
+sig_type = "noise" #"none" / "noise" / "cw" / "swept-cw" / "pulse"
 sig_freq = 0.024 * 10**6# Interpreted as the distance from the center freq [Hz]
 # For swept-CW source type:
 sig_freq_sweep_start = -fs/2
@@ -149,7 +149,7 @@ sig_freq_sweep_step  =  fs/N*2**12
     Let us set call this power level to 0 dB.
     
 """
-ps = -200  # Signal power [dB]
+ps = -30  # Signal power [dB]
 pn = -50  # Uncorrelated noise power [dB]
 pow_noise_source_dB = -15 # Correlated noise signal from the internal source [dB]
 
@@ -171,7 +171,7 @@ test_case_ctr_vector[0] = 0
 test_case_ctr_vector[1] = 0
 test_case_ctr_vector[2] = 0
 test_case_ctr_vector[3] = 0
-test_case_ctr_vector[4] = 0
+test_case_ctr_vector[4] = 4
 test_case_ctr_vector[5] = 0
 test_case_ctr_vector[6] = 0
 

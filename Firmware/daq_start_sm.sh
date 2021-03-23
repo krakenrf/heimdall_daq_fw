@@ -22,24 +22,24 @@ sync_cfn=_data_control/sync_control_fifo
 squelch_cfn=_data_control/squelch_control_fifo
 
 # (re) create control FIFOs
-rm _data_control/fw_decimator_in 2> /dev/NULL
-rm _data_control/bw_decimator_in 2> /dev/NULL
+rm _data_control/fw_decimator_in 2> /dev/null
+rm _data_control/bw_decimator_in 2> /dev/null
 
-rm _data_control/fw_decimator_out 2> /dev/NULL
-rm _data_control/bw_decimator_out 2> /dev/NULL
+rm _data_control/fw_decimator_out 2> /dev/null
+rm _data_control/bw_decimator_out 2> /dev/null
 
-rm _data_control/fw_squelch_out 2> /dev/NULL
-rm _data_control/bw_squelch_out 2> /dev/NULL
+rm _data_control/fw_squelch_out 2> /dev/null
+rm _data_control/bw_squelch_out 2> /dev/null
 
-rm _data_control/fw_delay_sync_iq 2> /dev/NULL
-rm _data_control/bw_delay_sync_iq 2> /dev/NULL
+rm _data_control/fw_delay_sync_iq 2> /dev/null
+rm _data_control/bw_delay_sync_iq 2> /dev/null
 
-rm _data_control/fw_delay_sync_hwc 2> /dev/NULL
-rm _data_control/bw_delay_sync_hwc 2> /dev/NULL
+rm _data_control/fw_delay_sync_hwc 2> /dev/null
+rm _data_control/bw_delay_sync_hwc 2> /dev/null
 
-rm $sync_cfn 2> /dev/NULL
-rm $rec_cfn 2> /dev/NULL
-rm $squelch_cfn 2> /dev/NULL
+rm $sync_cfn 2> /dev/null
+rm $rec_cfn 2> /dev/null
+rm $squelch_cfn 2> /dev/null
 
 mkfifo $sync_cfn
 mkfifo $rec_cfn
@@ -61,7 +61,7 @@ mkfifo _data_control/fw_delay_sync_hwc
 mkfifo _data_control/bw_delay_sync_hwc
 
 # Remove old log files
-rm _logs/*.log 2> /dev/NULL
+rm _logs/*.log 2> /dev/null
 
 # Useful to set this on low power ARM devices 
 #sudo cpufreq-set -g performance
