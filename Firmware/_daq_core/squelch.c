@@ -122,10 +122,10 @@ void * fifo_read_tf(void* arg)
     FILE * fd = fopen(SQC_FNAME, "r");    
     if(fd!=0)
         log_info("Control FIFO opened succesfully");
-    else
+    else{
         log_fatal("Control FIFO open error"); 
         exit_flag = 1;
-
+    }
     /* Main command processing loop */
     while(!exit_flag){
         read_size=fread(&signal, sizeof(signal), 1, fd);
@@ -341,15 +341,15 @@ int main(int argc, char* argv[])
                 *------------------
                 */
                 if (scan_start == 0)
-                {
+                {                    
                     /* Acquire data buffer on the shared memory interface */
-                    active_buff_ind_in = wait_buff_ready(input_sm_buff);        
+                    active_buff_ind_in = wait_buff_ready(input_sm_buff);    
                     if (active_buff_ind_in == 255){exit_flag = active_buff_ind_in; break;}
                     iq_frame_in->header = (struct iq_header_struct*) input_sm_buff->shm_ptr[active_buff_ind_in];
                     iq_frame_in->payload = ((float *) input_sm_buff->shm_ptr[active_buff_ind_in] )+ IQ_HEADER_LENGTH/sizeof(float);
                     iq_frame_in->payload_size=iq_frame_in->header->cpi_length*2 * iq_frame_in->header->active_ant_chs;
                     CHK_SYNC_WORD(check_sync_word(iq_frame_in->header));	
-                    log_trace("--> Frame received: type: %d, daq ind:[%d]",iq_frame_in->header->frame_type, iq_frame_in->header->daq_block_index);
+                    log_trace("--> Frame received: type: %d, daq ind:[%d]",iq_frame_in->header->frame_type, iq_frame_in->header->daq_block_index);                    
                 }
                                 
                 /*
@@ -428,7 +428,7 @@ int main(int argc, char* argv[])
                     send_ctr_buff_free(input_sm_buff, active_buff_ind_in);
                 }
                 
-            }            
+            }       
             if (!exit_flag)
             {
                 log_trace("<--Transfering frame type: %d, daq ind:[%d]",iq_frame_out->header->frame_type, iq_frame_out->header->daq_block_index);
