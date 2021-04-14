@@ -40,6 +40,9 @@ rootPath = os.path.dirname(currentPath)
 sys.path.insert(0, os.path.join(rootPath, "_daq_core"))
 from iq_header import IQHeader
 
+# Import third party modules
+from pyargus.directionEstimation import gen_scanning_vectors
+
 #TODO: Use mutexes for the control variables
 class FIFO_rd_thread(Thread):
     """
@@ -154,6 +157,21 @@ pn = -50  # Uncorrelated noise power [dB]
 pow_noise_source_dB = -15 # Correlated noise signal from the internal source [dB]
 
 """
+    --> Antenna layout <-- [Test Case 4]
+"""
+ant_config = "UCA"
+ula_d = 0.5 # Inter element spacing [lambda]
+uca_r = 1/(2*np.sqrt(2))
+
+if ant_config == "ULA":
+    ant_x = np.zeros(M)
+    ant_y = np.arange(M) * ula_d   
+    
+else: # UCA
+    ant_x = uca_r*np.cos(np.deg2rad(np.arange(M)*360/M)) 
+    ant_y = -uca_r*np.sin(np.deg2rad(np.arange(M)*360/M))    
+
+"""
     --> Test case control vector <--
     
     Put 1 in the corresponding position to enable a test case
@@ -171,7 +189,7 @@ test_case_ctr_vector[0] = 0
 test_case_ctr_vector[1] = 0
 test_case_ctr_vector[2] = 0
 test_case_ctr_vector[3] = 0
-test_case_ctr_vector[4] = 4
+test_case_ctr_vector[4] = 1
 test_case_ctr_vector[5] = 0
 test_case_ctr_vector[6] = 0
 
@@ -180,7 +198,7 @@ test_case_ctr_vector[6] = 0
 tc3_start = 100 # Block index when tc3 is initiated
 tc4_start = 150 # Block index when tc4 is initiated
 tc5_start = 120 # Block index when tc5 is initiated
-tc6_start = 120 # Block index when tc6 is initiated
+tc6_start = 90 # Block index when tc6 is initiated
 
 theta_tc4 = 0 # Initial angle for tc4
 
@@ -337,7 +355,8 @@ try:
                     if (tc4_start-b)%20 == 0:
                         theta_tc4 += 5
                         #theta_tc4 = 20
-                    phase_diffs = np.rad2deg(np.arange(M)*np.pi*np.cos(np.deg2rad(theta_tc4)))
+                    #phase_diffs = np.rad2deg(np.arange(M)*np.pi*np.cos(np.deg2rad(theta_tc4)))
+                    phase_diffs = np.rad2deg(np.angle(gen_scanning_vectors(M, ant_x, ant_y, [theta_tc4,])[:,0]))
                     logging.info("DoA simulation - incident anlge :{:.2f}".format(theta_tc4))
                 
                 if test_case_ctr_vector[5] and b> tc5_start:
