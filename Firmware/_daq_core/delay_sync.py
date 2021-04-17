@@ -63,7 +63,9 @@ class delaySynchronizer():
         self.min_corr_peak_dyn_range = 20 # [dB]
         self.corr_peak_offset = 100 # [sample]
         self.cal_track_mode = 0
-        
+        self.signal_power_compensation = 1  # Estimated from the average SNR of the xcorr peaks
+        self.amplitude_cal_mode = "compensated" # "normal" / "compensated" / "disabled" -> Updated from .ini
+
         self.phase_diff_tolerance = 3 # deg, maximum allowable phase difference
         self.amp_diff_tolerance = 1 # power in dB, maximum allowable amplitude difference
         
@@ -92,7 +94,7 @@ class delaySynchronizer():
         self.in_block_size = self.N *self.M * 2 * 4
         
         self.logger.info("Antenna channles {:d}".format(self.M))
-        self.logger.info("IQ samples per channel {:d}".format(self.N))       
+        self.logger.info("IQ samples per channel {:d}".format(self.N))  
         self.current_state = "STATE_INIT" 
         
         # List of the channels to be mathced 
@@ -137,6 +139,7 @@ class delaySynchronizer():
         self.phase_diff_tolerance = parser.getint('calibration', 'phase_tolerance')
         self.cal_track_mode = parser.getint('calibration','cal_track_mode')
         self.max_sync_fails = parser.getint('calibration','maximum_sync_fails')
+        self.amplitude_cal_mode = parser.get('calibration','amplitude_cal_mode')
         
         if parser.getint('calibration', 'en_frac_cal'):
             self.en_frac_cal = True
@@ -270,7 +273,12 @@ class delaySynchronizer():
             dyn_ranges.append(-20*np.log10(abs(iq_diffs[m]) / abs(corr_at_offset_m)))
                         
             # Normalizing IQ difference with average power    
-            iq_diffs[m] *= signal_power 
+            if self.amplitude_cal_mode == "disabled":
+                iq_diffs[m] /= np.abs(iq_diffs[m])
+            elif self.amplitude_cal_mode == "compensated":
+                iq_diffs[m] *= signal_power*self.signal_power_compensation
+            else: # self.amplitude_cal_mode == "normal": # Default is normal
+                iq_diffs[m] *= signal_power
             
             # Logging            
             self.logger.debug("Channel: {:d}, Peak dyn. range: {:.2f}[min: {:.2f}], Amp.:{:.2f}, Phase:{:.2f} ".format(\
@@ -389,14 +397,26 @@ class delaySynchronizer():
                     for m in self.channel_list:
                         y_padd = np.concatenate([np_zeros, iq_samples[m, 0:self.N_proc]])
                         y_fft = np.fft.fft(y_padd)
-                        self.corr_functions[m,:] = np.abs(np.fft.ifft(x_fft.conj() * y_fft))
-                    # ->  Calculate sample delays (Not sub sample) and check dynamic range
+                        self.corr_functions[m,:] = np.abs(np.fft.ifft(x_fft.conj() * y_fft))**2
+                    # ->  Calculate sample delays (Not sub sample), check dynamic range and estimate delta
                     # WARNING: This dynamic range checking assumes dirac like coorelation peak
+                    deltas = []
                     for m in self.channel_list:
                         peak_index = np.argmax(self.corr_functions[m, :])
+
+                        # Estimate delta
+                        win = 100
+                        guard = 10
+                        noise_power_estimate = np.average(self.corr_functions[m, peak_index+guard:peak_index+guard+win])
+                        noise_power_estimate += np.average(self.corr_functions[m,peak_index-guard-win:peak_index-guard])
+                        noise_power_estimate /=2
+                        delta = self.corr_functions[m, peak_index]/noise_power_estimate
+                        self.logger.debug("Channel: {:d} Delta: {:.1f}".format(m, 10*np.log10(delta)))                  
+                        deltas.append(delta)
+                        
                         # Check dynamic range
                         # TODO: Check overindexing
-                        dyn_range = 20*np.log10(self.corr_functions[m, peak_index] / 
+                        dyn_range = 10*np.log10(self.corr_functions[m, peak_index] / 
                                                  self.corr_functions[m, peak_index+self.corr_peak_offset])
                         if dyn_range < self.min_corr_peak_dyn_range:
                             self.logger.warning("Correlation peak dynamic range is insufficient to perform calibration")
@@ -413,6 +433,21 @@ class delaySynchronizer():
                             delay_update_flag=1
                         self.logger.debug("Channel {:d}, delay: {:d}".format(m, self.delays[m]))
                     
+                    # Calculate snr and signal power from delta                    
+                    delta = np.average(deltas)                    
+                    b=2*delta-2
+                    a=(delta-self.N_proc-2)
+                    c=delta-1
+                    d=b**2-4*a*c
+                    snr_sol1 = (-b-np.sqrt(d))/(2*a)
+                    snr_sol2 = (-b+np.sqrt(d))/(2*a)
+                    if   snr_sol1>0: snr = snr_sol1
+                    elif snr_sol2>0: snr = snr_sol2
+                    else:            snr = self.N_proc
+                    self.logger.debug("Average, Delta : {:.1f} dB, SNR: {:.1f} dB".format(10*np.log10(delta),10*np.log10(snr)))
+                    self.signal_power_compensation = 1 / (1+(1/snr)) 
+                    self.logger.debug("Signal power compensation: {:.1f} dB".format(10*np.log10(self.signal_power_compensation)))
+
                     # Set time delay and 
                     if delay_update_flag:
                         self.logger.info("Sending delays compensations [{:d}]".format(self.iq_header.cpi_index))

@@ -152,8 +152,8 @@ sig_freq_sweep_step  =  fs/N*2**12
     Let us set call this power level to 0 dB.
     
 """
-ps = -30  # Signal power [dB]
-pn = -50  # Uncorrelated noise power [dB]
+ps = -200  # Signal power [dB]
+pn = -15  # Uncorrelated noise power [dB]
 pow_noise_source_dB = -15 # Correlated noise signal from the internal source [dB]
 
 """
