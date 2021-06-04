@@ -129,10 +129,14 @@ delays = [0]*M
 #delays [7] = 30
 
 phase_diffs = [0]*M 
+phase_diffs = [-10, 0, 20, 20, 40] # deg
+
 
 cal_noise_phase_diffs = [0]*M
+cal_noise_phase_diffs = [-10, 0, 20, 20, 40] # deg
 
 power_diffs  = [0]*M# dB
+power_diffs  = [0, -3, 3, 2, 1]# dB
 
 blocks = 10000
 block_size = N_daq*2    
@@ -153,13 +157,13 @@ sig_freq_sweep_step  =  fs/N*2**12
     
 """
 ps = -200  # Signal power [dB]
-pn = -15  # Uncorrelated noise power [dB]
-pow_noise_source_dB = -15 # Correlated noise signal from the internal source [dB]
+pn = -20  # Uncorrelated noise power [dB]
+pow_noise_source_dB = -30 # Correlated noise signal from the internal source [dB]
 
 """
     --> Antenna layout <-- [Test Case 4]
 """
-ant_config = "UCA"
+ant_config = "ULA"
 ula_d = 0.5 # Inter element spacing [lambda]
 uca_r = 1/(2*np.sqrt(2))
 
@@ -188,7 +192,7 @@ test_case_ctr_vector    = [0]*7
 test_case_ctr_vector[0] = 0
 test_case_ctr_vector[1] = 0
 test_case_ctr_vector[2] = 0
-test_case_ctr_vector[3] = 0
+test_case_ctr_vector[3] = 1
 test_case_ctr_vector[4] = 1
 test_case_ctr_vector[5] = 0
 test_case_ctr_vector[6] = 0
@@ -197,10 +201,10 @@ test_case_ctr_vector[6] = 0
 
 tc3_start = 100 # Block index when tc3 is initiated
 tc4_start = 150 # Block index when tc4 is initiated
-tc5_start = 120 # Block index when tc5 is initiated
+tc5_start = 150 # Block index when tc5 is initiated
 tc6_start = 90 # Block index when tc6 is initiated
 
-theta_tc4 = 0 # Initial angle for tc4
+theta_tc4 = 90 # Initial angle for tc4
 
 en_dummy_frame = False
 dummy_frame_cntr = 0
@@ -386,12 +390,15 @@ try:
             if FIFO_rd_thread_inst0.noise_source_state == 1:
                 if b%2 == 0:
                     raw_sig_m[0:delays[m]]     += internal_noise_multiblock[2*N_daq-delays[m]:2*N_daq] \
+                                               * 10**(power_diffs[m]/20) \
                                                *  np.exp(1j*np.deg2rad(cal_noise_phase_diffs[m]))
                                                
                     raw_sig_m[delays[m]:N_daq] += internal_noise_multiblock[0:N_daq-delays[m]] \
+                                               * 10**(power_diffs[m]/20) \
                                                *  np.exp(1j*np.deg2rad(cal_noise_phase_diffs[m]))
                 else: # b%2 =1
                     raw_sig_m[:] += internal_noise_multiblock[N_daq-delays[m]:2*N_daq-delays[m]] \
+                                 * 10**(power_diffs[m]/20) \
                                  *  np.exp(1j*np.deg2rad(cal_noise_phase_diffs[m]))
                 
             # Add usefull signal component and perform amplitude and phase distortion

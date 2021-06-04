@@ -25,6 +25,7 @@ import logging
 import sys
 from struct import pack
 import numpy as np
+import numpy.linalg as lin
 from configparser import ConfigParser
 from iq_header import IQHeader
 from shmemIface import outShmemIface, inShmemIface
@@ -64,7 +65,7 @@ class delaySynchronizer():
         self.corr_peak_offset = 100 # [sample]
         self.cal_track_mode = 0
         self.signal_power_compensation = 1  # Estimated from the average SNR of the xcorr peaks
-        self.amplitude_cal_mode = "compensated" # "normal" / "compensated" / "disabled" -> Updated from .ini
+        self.amplitude_cal_mode = "normal" # "normal" / "compensated" / "disabled" / "eig" -> Updated from .ini
 
         self.phase_diff_tolerance = 3 # deg, maximum allowable phase difference
         self.amp_diff_tolerance = 1 # power in dB, maximum allowable amplitude difference
@@ -259,8 +260,8 @@ class delaySynchronizer():
         """
         iq_diffs   = np.ones(self.M, dtype=np.complex64)
         dyn_ranges = []        
-        signal_power = (np.dot(iq_samples[self.std_ch_ind, :], 
-                               iq_samples[self.std_ch_ind, :].conj())) / self.N_proc        
+        #signal_power = (np.dot(iq_samples[self.std_ch_ind, :], 
+        #                       iq_samples[self.std_ch_ind, :].conj())) / self.N_proc        
         # Calculate cross-correlations
         for m in self.channel_list:
             # Correlation at zero offset 
@@ -271,7 +272,8 @@ class delaySynchronizer():
                                                    iq_samples[self.std_ch_ind, 0:-self.corr_peak_offset].conj()))
             # Check dynamic range
             dyn_ranges.append(-20*np.log10(abs(iq_diffs[m]) / abs(corr_at_offset_m)))
-                        
+
+            """            
             # Normalizing IQ difference with average power    
             if self.amplitude_cal_mode == "disabled":
                 iq_diffs[m] /= np.abs(iq_diffs[m])
@@ -284,8 +286,22 @@ class delaySynchronizer():
             self.logger.debug("Channel: {:d}, Peak dyn. range: {:.2f}[min: {:.2f}], Amp.:{:.2f}, Phase:{:.2f} ".format(\
                               m, dyn_ranges[-1], self.min_corr_peak_dyn_range, 20*np.log10(abs(1/iq_diffs[m])), 
                               np.rad2deg(np.angle(1/iq_diffs[m]))))           
-        
-        
+            """
+        # Calculate Spatial correlation matrix    
+        if self.amplitude_cal_mode == "eig":
+            Rxx = iq_samples.dot(np.conj(iq_samples.T))
+            # Perform eigen-decomposition
+            eigenvalues, eigenvectors = lin.eig(Rxx)
+            # Get dominant eigenvector
+            max_eig_index = np.argmax(np.abs(eigenvalues))
+            vmax  = eigenvectors[:, max_eig_index]
+            iq_diffs = 1 / vmax
+            iq_diffs /= iq_diffs[self.std_ch_ind]
+        for m in range(self.M):
+            self.logger.debug("Channel: {:d}, Peak dyn. range: {:.2f}[min: {:.2f}], Amp.:{:.2f}, Phase:{:.2f} ".format(\
+                            m, dyn_ranges[-1], self.min_corr_peak_dyn_range, 20*np.log10(abs(iq_diffs[m])), 
+                            np.rad2deg(np.angle(iq_diffs[m]))))  
+
         return np.array(dyn_ranges), iq_diffs
     def start(self):
         """
@@ -400,11 +416,12 @@ class delaySynchronizer():
                         self.corr_functions[m,:] = np.abs(np.fft.ifft(x_fft.conj() * y_fft))**2
                     # ->  Calculate sample delays (Not sub sample), check dynamic range and estimate delta
                     # WARNING: This dynamic range checking assumes dirac like coorelation peak
-                    deltas = []
+                    #deltas = []
                     for m in self.channel_list:
                         peak_index = np.argmax(self.corr_functions[m, :])
 
                         # Estimate delta
+                        """
                         win = 100
                         guard = 10
                         noise_power_estimate = np.average(self.corr_functions[m, peak_index+guard:peak_index+guard+win])
@@ -413,7 +430,7 @@ class delaySynchronizer():
                         delta = self.corr_functions[m, peak_index]/noise_power_estimate
                         self.logger.debug("Channel: {:d} Delta: {:.1f}".format(m, 10*np.log10(delta)))                  
                         deltas.append(delta)
-                        
+                        """
                         # Check dynamic range
                         # TODO: Check overindexing
                         dyn_range = 10*np.log10(self.corr_functions[m, peak_index] / 
@@ -432,7 +449,7 @@ class delaySynchronizer():
                             sample_sync_flag = False # Misalling detected
                             delay_update_flag=1
                         self.logger.debug("Channel {:d}, delay: {:d}".format(m, self.delays[m]))
-                    
+                    """
                     # Calculate snr and signal power from delta                    
                     delta = np.average(deltas)                    
                     b=2*delta-2
@@ -447,8 +464,8 @@ class delaySynchronizer():
                     self.logger.debug("Average, Delta : {:.1f} dB, SNR: {:.1f} dB".format(10*np.log10(delta),10*np.log10(snr)))
                     self.signal_power_compensation = 1 / (1+(1/snr)) 
                     self.logger.debug("Signal power compensation: {:.1f} dB".format(10*np.log10(self.signal_power_compensation)))
-
-                    # Set time delay and 
+                    """
+                    # Set time delay 
                     if delay_update_flag:
                         self.logger.info("Sending delays compensations [{:d}]".format(self.iq_header.cpi_index))
                         delays = (-1*self.delays).tolist()
@@ -495,7 +512,7 @@ class delaySynchronizer():
                         elif (abs(np.rad2deg(np.angle(iq_diffs[m]))) > self.phase_diff_tolerance) or \
                            (abs(iq_diffs[m]) > 10**(self.amp_diff_tolerance/20)):  
                            iq_corr_update_flag = True
-        
+                        
                         # Update correction values if needed                
                         if iq_corr_update_flag:
                             iq_sync_flag = False
