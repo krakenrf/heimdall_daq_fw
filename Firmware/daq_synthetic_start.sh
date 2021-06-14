@@ -6,6 +6,17 @@
 #   License : GNU GPL V3
 #   Authors: Tamas Peto, Carl Laufer
 
+# Check config file
+res=$(python3 ini_checker.py 2>&1)
+if test -z "$res" 
+then
+      echo -e "\e[92mConfig file check [OK]\e[39m"
+else
+      echo -e "\e[91mConfig file check [FAIL]\e[39m"
+      echo $res
+      exit
+fi
+
 # Read config ini file
 en_squelch=$(awk -F "=" '/en_squelch/ {print $2}' daq_chain_config.ini)
 out_data_iface_type=$(awk -F "=" '/out_data_iface_type/ {print $2}' daq_chain_config.ini)
@@ -69,7 +80,12 @@ rm _logs/*.log 2> /dev/null
 
 # Generating FIR filter coefficients
 python3 fir_filter_designer.py
-
+out=$?
+if test $out -ne 0
+    then
+        echo -e "\e[91mDAQ chain not started!\e[39m"
+        exit
+fi
 # Start main program chain -Thread 0 Normal (non squelch mode)
 echo "Starting DAQ Subsystem with synthetic data source"
 python3 _testing/test_data_synthesizer.py 2>_logs/synthetic.log | \
