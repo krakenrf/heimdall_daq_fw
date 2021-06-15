@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import logging
+import subprocess
+import sys
 from configparser import ConfigParser
+
 """
 	Checks the values in config ini file
 	
@@ -42,13 +45,24 @@ def chk_float(s):
     except ValueError:
         return False
 
+def count_receivers():
+    lsusb_cmd = subprocess.run(["lsusb"], capture_output=True, text=True)
+    lsusb_str = lsusb_cmd.stdout
+    device_count = 0
+    for line in lsusb_str.splitlines():
+        if line.find("Realtek")>=0:device_count+=1
+    logging.debug("Found {:d} receivers".format(device_count))
+    return device_count
+
 # Initialize logger        
 logging.basicConfig(level=logging.INFO)
 valid_gains = [0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496]
 valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann'] 
 # See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html#scipy.signal.get_window
 
-def check_ini(parameters):
+def check_ini(parameters, en_hw_check=True):
+    device_count = count_receivers()
+
     error_list = []
     """
     --------------------------------
@@ -71,7 +85,8 @@ def check_ini(parameters):
     else:
         if int(hw_params['num_ch']) <= 0:
             error_list.append("Number of channels must be a non zero positive number. Currently it is: '{0}' ".format(hw_params['num_ch']))
-    # TODO: Check the available channels: device_count=$(lsusb | grep "Realtek" | wc -l)
+        if en_hw_check and int(hw_params['num_ch']) > device_count:
+            error_list.append("Only {0} receiver channels are available, but {1} is requested!".format(device_count, hw_params['num_ch']))
 
     """
     --------------------------------
@@ -208,7 +223,8 @@ def check_ini(parameters):
     else:
         if int(cal_params['std_ch_ind']) < 0:
             error_list.append("Standard channel index must be a non negative integer. Currently it is: '{0}' ".format(cal_params['std_ch_ind']))
-        # TODO: Check valid channel range
+        if en_hw_check and int(cal_params['std_ch_ind']) > device_count-1:
+            error_list.append("Standard channel index is higher than the number of available channels. Currently it is: '{0}' , available: 0..{1}".format(cal_params['std_ch_ind'], device_count-1))
 
     if not chk_int(cal_params['en_frac_cal']):
         error_list.append("Fractional sample delay enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_frac_cal']))
@@ -326,9 +342,13 @@ def check_ini(parameters):
 
     return error_list
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     parameters = read_config_file('daq_chain_config.ini')
-    error_list = check_ini(parameters)
+    en_hw_check=True
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "no_hw":
+            en_hw_check=False
+    error_list = check_ini(parameters, en_hw_check)
     if len(error_list):
         for e in error_list:
             logging.error(e)
