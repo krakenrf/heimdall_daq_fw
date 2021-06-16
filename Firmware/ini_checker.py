@@ -53,8 +53,18 @@ def count_receivers():
         if line.find("Realtek")>=0:device_count+=1
     logging.debug("Found {:d} receivers".format(device_count))
     return device_count
+def get_serials():
+    serial_nos = []
+    for ch_ind in range(5):
+        rtl_eeprom_cmd = subprocess.run(["rtl_eeprom", "-d", str(ch_ind)], capture_output=True, text=True)
+        response    = rtl_eeprom_cmd.stderr
+        response_l  = response.split('\n')
+        for line in response_l:
+            if line.find("Serial number:") >=0:
+                serial_nos.append(int(line[line.find(':\t\t')+2:]))
+    return serial_nos
 
-# Initialize logger        
+# Initialize logger
 logging.basicConfig(level=logging.INFO)
 valid_gains = [0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496]
 valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann'] 
@@ -62,6 +72,7 @@ valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlet
 
 def check_ini(parameters, en_hw_check=True):
     device_count = count_receivers()
+    serials = get_serials() if en_hw_check else []
 
     error_list = []
     """
@@ -134,8 +145,8 @@ def check_ini(parameters, en_hw_check=True):
     if not chk_int(daq_params['ctr_channel_serial_no']):
         error_list.append("Control channel serial number must be an integer. Currently it is: '{0}' ".format(daq_params['ctr_channel_serial_no']))
     else:
-        pass
-        # TODO: Check for valid serial numbers rtl_eeprom -d 0
+        if en_hw_check and not int(daq_params['ctr_channel_serial_no']) in serials:
+            error_list.append("Invalid control channel serial number. Available serial numbers: {0}, Currrently set:{1}".format(serials, daq_params['ctr_channel_serial_no']))
 
 
     """
@@ -328,6 +339,8 @@ def check_ini(parameters, en_hw_check=True):
         else:
             if not int(gain_str) in valid_gains:
                 error_list.append("ADPIS gain init values should be one of the followings:{0}. Currently one of it is: '{1}' ".format(valid_gains,int(gain_str)))
+    if en_hw_check and len(gains_init_str) != device_count:
+        error_list.append("The number of specified ADPIS gain init values does not much with availble channels. Set:{0}, available:{1}".format(len(gains_init_str), device_count))
 
     # TODO: Check the available channels: device_count=$(lsusb | grep "Realtek" | wc -l)
 
