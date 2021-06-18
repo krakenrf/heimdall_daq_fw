@@ -192,8 +192,8 @@ test_case_ctr_vector    = [0]*7
 test_case_ctr_vector[0] = 0
 test_case_ctr_vector[1] = 0
 test_case_ctr_vector[2] = 0
-test_case_ctr_vector[3] = 1
-test_case_ctr_vector[4] = 1
+test_case_ctr_vector[3] = 0
+test_case_ctr_vector[4] = 0
 test_case_ctr_vector[5] = 0
 test_case_ctr_vector[6] = 0
 
