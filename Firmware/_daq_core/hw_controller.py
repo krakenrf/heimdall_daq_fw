@@ -344,9 +344,13 @@ class HWC():
             self.rec_ctr_fifo.write(pack("I", int(params[0])))
         elif command == "GAIN":
             try:
-                for m in range(self.M):                
-                    self.gains[m] = self.valid_gains.index(params[m])
-                self._change_gains()
+                if self.noise_source_state: # The noise source is turned on, we are storing only the gains
+                    for m in range(self.M):
+                        self.last_gains[m] = self.valid_gains.index(params[m])
+                else:
+                    for m in range(self.M):
+                        self.gains[m] = self.valid_gains.index(params[m])
+                    self._change_gains()
             except ValueError:
                 self.logger.error("Improper gain value {:d}".format(params[m]))
     

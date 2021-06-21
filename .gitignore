@@ -13,3 +13,4 @@ Firmware/_testing/unit_test/__pycache__/*
 Firmware/_testing/__pycache__/*
 Firmware/_testing/test_logs/*.log
 Firmware/_testing/test_logs/*.html
+Firmware/__pycache__/*

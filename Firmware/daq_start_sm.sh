@@ -6,6 +6,17 @@
 #   License : GNU GPL V3
 #   Authors: Tamas Peto, Carl Laufer
 
+# Check config file
+res=$(python3 ini_checker.py 2>&1)
+if test -z "$res" 
+then
+      echo -e "\e[92mConfig file check [OK]\e[39m"
+else
+      echo -e "\e[91mConfig file check [FAIL]\e[39m"
+      echo $res
+      exit
+fi
+
 sysctl -w kernel.sched_rt_runtime_us=-1
 
 # Read config ini file
@@ -106,7 +117,7 @@ python3 fir_filter_designer.py
 out=$?
 if test $out -ne 0
     then
-        echo "DAQ chain not started!"
+        echo -e "\e[91mDAQ chain not started!\e[39m"
         exit
 fi
 

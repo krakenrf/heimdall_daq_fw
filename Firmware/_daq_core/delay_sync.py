@@ -25,6 +25,7 @@ import logging
 import sys
 from struct import pack
 import numpy as np
+import numpy.linalg as lin
 from configparser import ConfigParser
 from iq_header import IQHeader
 from shmemIface import outShmemIface, inShmemIface
@@ -62,10 +63,11 @@ class delaySynchronizer():
                 
         self.min_corr_peak_dyn_range = 20 # [dB]
         self.corr_peak_offset = 100 # [sample]
-        self.cal_track_mode = 0
-        
+        self.cal_track_mode = 0        
+        self.amplitude_cal_mode = "channel_power" # "default" / "disabled" / "channel_power"  -> Updated from .ini
+
         self.phase_diff_tolerance = 3 # deg, maximum allowable phase difference
-        self.amp_diff_tolerance = 1 # power in dB, maximum allowable amplitude difference
+        self.amp_diff_tolerance = 0.5 # power ratio  maximum allowable amplitude difference, not dB!
         
         self.sync_failed_cntr = 0 # Counts the number of iq or sample sync fails in track mode
         self.max_sync_fails = 3 # Maximum number of synchronization fails before the sync track is lost
@@ -83,6 +85,8 @@ class delaySynchronizer():
         # Initialize logger        
         logging.basicConfig(level=self.logging_level)
         self.logger = logging.getLogger(__name__)
+        float_formatter = "{:.2f}".format
+        np.set_printoptions(formatter={'float_kind':float_formatter})
         
         self.iq_header = IQHeader()
         """
@@ -92,7 +96,7 @@ class delaySynchronizer():
         self.in_block_size = self.N *self.M * 2 * 4
         
         self.logger.info("Antenna channles {:d}".format(self.M))
-        self.logger.info("IQ samples per channel {:d}".format(self.N))       
+        self.logger.info("IQ samples per channel {:d}".format(self.N))  
         self.current_state = "STATE_INIT" 
         
         # List of the channels to be mathced 
@@ -137,6 +141,7 @@ class delaySynchronizer():
         self.phase_diff_tolerance = parser.getint('calibration', 'phase_tolerance')
         self.cal_track_mode = parser.getint('calibration','cal_track_mode')
         self.max_sync_fails = parser.getint('calibration','maximum_sync_fails')
+        self.amplitude_cal_mode = parser.get('calibration','amplitude_cal_mode')
         
         if parser.getint('calibration', 'en_frac_cal'):
             self.en_frac_cal = True
@@ -153,6 +158,9 @@ class delaySynchronizer():
             self.in_shmem_iface_name = "decimator_out"
         
         self.logging_level=(parser.getint('daq', 'log_level')*10)
+
+        # Convert to voltage ratio
+        self.amp_diff_tolerance = 10**(self.amp_diff_tolerance/20)
         
         return 0
     def open_interfaces(self):
@@ -238,8 +246,7 @@ class delaySynchronizer():
             at zero offset is not remarkably higher than the value calculated at non-zero offet, we can
             consider the channels to be misaligned. 
 
-            The amplitude and phase offsets are determined directly from the cross-correlations
-            calculated az zero offset.
+            The amplitude and phase offsets are determined from the eigendecomposition of the spatial-correlation matrix
 
             Parameters:
             -----------
@@ -256,9 +263,8 @@ class delaySynchronizer():
         """
         iq_diffs   = np.ones(self.M, dtype=np.complex64)
         dyn_ranges = []        
-        signal_power = (np.dot(iq_samples[self.std_ch_ind, :], 
-                               iq_samples[self.std_ch_ind, :].conj())) / self.N_proc        
-        # Calculate cross-correlations
+
+        # Calculate cross-correlations to check sample level synchrony
         for m in self.channel_list:
             # Correlation at zero offset 
             iq_diffs[m]     = self.N_proc / (np.dot(iq_samples[m, :], 
@@ -268,16 +274,33 @@ class delaySynchronizer():
                                                    iq_samples[self.std_ch_ind, 0:-self.corr_peak_offset].conj()))
             # Check dynamic range
             dyn_ranges.append(-20*np.log10(abs(iq_diffs[m]) / abs(corr_at_offset_m)))
-                        
-            # Normalizing IQ difference with average power    
-            iq_diffs[m] *= signal_power 
-            
-            # Logging            
+
+        # Calculate Spatial correlation matrix to determine amplitude-phase missmatches         
+        Rxx = iq_samples.dot(np.conj(iq_samples.T))
+        # Perform eigen-decomposition
+        eigenvalues, eigenvectors = lin.eig(Rxx)
+        # Get dominant eigenvector
+        max_eig_index = np.argmax(np.abs(eigenvalues))
+        vmax  = eigenvectors[:, max_eig_index] 
+        iq_diffs = 1 / vmax
+        iq_diffs /= iq_diffs[self.std_ch_ind]
+
+        # Amplitude correction -  scaling IQ diferences
+        if self.amplitude_cal_mode == "channel_power":
+            channel_powers = list(map(lambda ch_ind: np.dot(iq_samples[ch_ind, :], iq_samples[ch_ind, :].conj())/self.N_proc, np.arange(self.M)))
+            iq_diffs       = np.array(list(map(lambda m: iq_diffs[m]/np.abs(iq_diffs[m])*
+                                                         np.sqrt(channel_powers[self.std_ch_ind]/channel_powers[m]),
+                                           np.arange(self.M))))
+        elif self.amplitude_cal_mode == "disabled":            
+            iq_diffs        = np.array(list(map(lambda m: iq_diffs[m]/np.abs(iq_diffs[m]), np.arange(self.M))))
+    
+            return iq_diffs
+
+        for m in range(self.M):
             self.logger.debug("Channel: {:d}, Peak dyn. range: {:.2f}[min: {:.2f}], Amp.:{:.2f}, Phase:{:.2f} ".format(\
-                              m, dyn_ranges[-1], self.min_corr_peak_dyn_range, 20*np.log10(abs(1/iq_diffs[m])), 
-                              np.rad2deg(np.angle(1/iq_diffs[m]))))           
-        
-        
+                            m, dyn_ranges[-1], self.min_corr_peak_dyn_range, 20*np.log10(abs(iq_diffs[m])), 
+                            np.rad2deg(np.angle(iq_diffs[m]))))  
+
         return np.array(dyn_ranges), iq_diffs
     def start(self):
         """
@@ -369,6 +392,8 @@ class delaySynchronizer():
                 #            
                 if self.current_state == "STATE_INIT": 
                     sync_state = 1
+                    # Reset IQ corrections
+                    self.iq_corrections = np.ones(self.M, dtype=np.complex64) 
                     # Calibration frame                    
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL: 
                         self.current_state = "STATE_SAMPLE_CAL"
@@ -389,14 +414,15 @@ class delaySynchronizer():
                     for m in self.channel_list:
                         y_padd = np.concatenate([np_zeros, iq_samples[m, 0:self.N_proc]])
                         y_fft = np.fft.fft(y_padd)
-                        self.corr_functions[m,:] = np.abs(np.fft.ifft(x_fft.conj() * y_fft))
-                    # ->  Calculate sample delays (Not sub sample) and check dynamic range
-                    # WARNING: This dynamic range checking assumes dirac like coorelation peak
+                        self.corr_functions[m,:] = np.abs(np.fft.ifft(x_fft.conj() * y_fft))**2
+                    # ->  Calculate sample delays (Not sub sample), check dynamic range
+                    # WARNING: This dynamic range checking assumes dirac like coorelation peak                    
                     for m in self.channel_list:
                         peak_index = np.argmax(self.corr_functions[m, :])
+
                         # Check dynamic range
                         # TODO: Check overindexing
-                        dyn_range = 20*np.log10(self.corr_functions[m, peak_index] / 
+                        dyn_range = 10*np.log10(self.corr_functions[m, peak_index] / 
                                                  self.corr_functions[m, peak_index+self.corr_peak_offset])
                         if dyn_range < self.min_corr_peak_dyn_range:
                             self.logger.warning("Correlation peak dynamic range is insufficient to perform calibration")
@@ -412,8 +438,7 @@ class delaySynchronizer():
                             sample_sync_flag = False # Misalling detected
                             delay_update_flag=1
                         self.logger.debug("Channel {:d}, delay: {:d}".format(m, self.delays[m]))
-                    
-                    # Set time delay and 
+                    # Set time delay 
                     if delay_update_flag:
                         self.logger.info("Sending delays compensations [{:d}]".format(self.iq_header.cpi_index))
                         delays = (-1*self.delays).tolist()
@@ -458,9 +483,10 @@ class delaySynchronizer():
                            
                         # Check IQ calibration necessity
                         elif (abs(np.rad2deg(np.angle(iq_diffs[m]))) > self.phase_diff_tolerance) or \
-                           (abs(iq_diffs[m]) > 10**(self.amp_diff_tolerance/20)):  
-                           iq_corr_update_flag = True
-        
+                             (abs(iq_diffs[m]) > self.amp_diff_tolerance):  
+                            iq_corr_update_flag = True
+                            self.logger.debug("Amplitude or phase differenceas are out of tolerance")                        
+                        
                         # Update correction values if needed                
                         if iq_corr_update_flag:
                             iq_sync_flag = False
@@ -516,7 +542,7 @@ class delaySynchronizer():
                         if self.en_iq_cal:
                             # Check IQ sync loss
                             if (abs(np.rad2deg(np.angle(iq_diffs/self.iq_diff_ref))) > self.phase_diff_tolerance).any() or \
-                               (abs(iq_diffs/self.iq_diff_ref) > 10**(self.amp_diff_tolerance/20)).any():
+                               (abs(iq_diffs/self.iq_diff_ref) > self.amp_diff_tolerance).any():
                                    iq_sync_flag = False
                                    self.logger.warning("IQ sync may lost")
                                    for m in range(self.M):
