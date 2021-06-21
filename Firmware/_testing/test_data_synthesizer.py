@@ -158,7 +158,7 @@ sig_freq_sweep_step  =  fs/N*2**12
 """
 ps = -200  # Signal power [dB]
 pn = -20  # Uncorrelated noise power [dB]
-pow_noise_source_dB = -30 # Correlated noise signal from the internal source [dB]
+pow_noise_source_dB = -23 # Correlated noise signal from the internal source [dB]
 
 """
     --> Antenna layout <-- [Test Case 4]

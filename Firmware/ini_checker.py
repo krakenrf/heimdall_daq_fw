@@ -249,8 +249,9 @@ def check_ini(parameters, en_hw_check=True):
         if not int(cal_params['en_iq_cal']) in [0,1]:
             error_list.append("IQ calibration enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_iq_cal']))
 
-    # TODO: CHECK VALID AMPLITUDE CAL MODE OPTIONS IF NEEDED
-    # amplitude_cal_mode = eig
+    if not cal_params['amplitude_cal_mode'] in ['default','disabled','channel_power']:
+        error_list.append("Invalid amplitude calibration mode. Valid options: 'default','disabled','channel_power', Currently it is: '{0}'".format(cal_params['amplitude_cal_mode']))
+    
     if not chk_int(cal_params['gain_lock_interval']):
         error_list.append("Gain lock interval must be a positive integer. Currently it is: '{0}' ".format(cal_params['gain_lock_interval']))
     else:
