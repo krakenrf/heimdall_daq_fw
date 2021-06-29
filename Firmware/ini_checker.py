@@ -3,6 +3,7 @@ import logging
 import subprocess
 import sys
 from configparser import ConfigParser
+import numpy as np
 
 """
 	Checks the values in config ini file
@@ -115,8 +116,12 @@ def check_ini(parameters, en_hw_check=True):
     if not chk_int(daq_params['daq_buffer_size']):
         error_list.append("DAQ buffer size must be a non-zero integer. Currently it is: '{0}' ".format(daq_params['daq_buffer_size']))
     else:
-        if int(daq_params['daq_buffer_size']) <= 0:
+        daq_buffer_size = int(daq_params['daq_buffer_size'])
+        if daq_buffer_size <= 0:
             error_list.append("DAQ buffer size must be a non-zero integer Currently it is: '{0}' ".format(daq_params['daq_buffer_size']))
+        
+        if not (daq_buffer_size & (daq_buffer_size-1) == 0):
+            error_list.append("DAQ buffer size must be a the power of 2 Currently it is: '{0}' ".format(daq_params['daq_buffer_size']))
 
     if not chk_int(daq_params['center_freq']):
         error_list.append("DAQ center frequency must be a non-zero integer. Currently it is: '{0}' ".format(daq_params['center_freq']))
