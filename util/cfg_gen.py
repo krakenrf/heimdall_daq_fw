@@ -12,6 +12,7 @@
 import numpy as np
 import logging
 from configparser import ConfigParser
+import argparse
 import sys, os
 
 current_path        = os.path.dirname(os.path.realpath(__file__))
@@ -105,18 +106,33 @@ daq_chain_ini_cfg = {"meta"           : meta,
 Calculate signal specific parameters
 
 """
-# ----------------> MANDATORY PARAMETERS <----------------
-BRI = 800          # burst repetition interval [ms]
-burst_length = 100 # [ms]
-bw = 10            # signal bandwidth [kHz] 
-# ----------------> MANDATORY PARAMETERS <----------------
+parser = argparse.ArgumentParser(description='Automatic configuration file generation for burst type signals')
 
+parser.add_argument('--bri', type=float, nargs=1, required=True,
+                     help='Burst repetition interval in miliseconds [ms]')
+
+parser.add_argument('--burst_length', type=float, nargs=1, required=True,
+                     help='Burst length in miliseconds [ms]')
+
+parser.add_argument('--bw', type=float, nargs=1, required=True,
+                     help='Signal bandwidth in kilohertz [kHz]')
+
+args =vars( parser.parse_args())
+
+# ----------------> MANDATORY PARAMETERS <----------------
+BRI          = args['bri'][0]         # burst repetition interval [ms]
+burst_length = args['burst_length'][0]# [ms]
+bw           = args['bw'][0]          # signal bandwidth [kHz] 
+# ---------------->  Extracted from CLI  <----------------
+
+minimum_FIR_tap_size = 16
 logging.info("Preparing config file..")
 cfg_fname="autogen.ini"
 
 fs = 2400000 # Set sampling rate to maximum to be able to increase the ENOBs as much as possible
 decimation_ratio = int(fs/(bw*10**3))
 fir_tap_size = 2**(int(np.log2(decimation_ratio))+1) 
+if fir_tap_size < minimum_FIR_tap_size: fir_tap_size=minimum_FIR_tap_size
 fs_dec     = fs/decimation_ratio # Decimated sample rate
 cpi_size   = int(burst_length*10**-3 * fs_dec)
 
@@ -128,6 +144,10 @@ daq_chain_ini_cfg['pre_processing']['fir_tap_size'] = str(fir_tap_size)
 daq_chain_ini_cfg['pre_processing']['cpi_size'] = str(cpi_size)
 
 daq_chain_ini_cfg['calibration']['corr_size'] = str(corr_size)
+
+logging.info("Decimation ratio :{:d}".format(decimation_ratio))
+logging.info("FIR filter tap size :{:d}".format(fir_tap_size))
+logging.info("CPI length :{:.2f} ms - {:d} sample".format(cpi_size*decimation_ratio/fs*10**3, cpi_size))
 """
 
 Check and write config file
