@@ -48,7 +48,9 @@ class HWC():
         self.in_shmem_iface = None
         self.valid_gains = [0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496]
         # Defined by the R820T tuner
-                
+        
+        self.cal_gain_table=np.array([[500,1000,1500],[0, 10, 12]]) # First column frequeny [MHz], second column gain index [valid_gains]
+        self.cal_gain_table[0,:]*=10**6 # Convert to Hz
         self.M = 7 # Number of receiver channels 
         self.N = 2**18 # Number of samples per channel
         self.N_proc = 2**13
@@ -372,10 +374,7 @@ class HWC():
             self.logger.info("Set gain values to perform calibration")  
             for m in range(self.M):
                 self.last_gains[m]=self.gains[m]
-                if self.iq_header.rf_center_freq > 400000000:
-                    self.gains[m] = 10 # 16.6 dB
-                else:
-                    self.gains[m] = 0 # 0 dB
+                self.gains[m]=self.cal_gain_table[1,np.argmin(abs(self.cal_gain_table[0,:]-self.iq_header.rf_center_freq))]
             self._change_gains()
 
             self.logger.info("Enable noise source, [{:d}]".format(self.iq_header.cpi_index))
