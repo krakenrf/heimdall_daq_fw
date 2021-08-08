@@ -6,9 +6,9 @@
  * Project : HeIMDALL DAQ Firmware
  * License : GNU GPL V3
  * Author  : Tamas Peto, Carl Laufer
- * Compatible hardware: RTL-SDR v3, KerberosSDR
+ * Compatible hardware: RTL-SDR v3, KerberosSDR, KrakenSDR
  *
- * Copyright (C) 2018-2020  Tamás Pető, Carl Laufer
+ * Copyright (C) 2018-2021  Tamás Pető, Carl Laufer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <sys/time.h>  // Used for latency estimation
 
 #include "ini.h"
 #include "log.h"
@@ -49,7 +50,7 @@
 
 #define NUM_BUFF 8  // Number of buffers used in the circular, coherent read buffer
 #define CFN "_data_control/rec_control_fifo" // Receiver control FIFO name 
-#define ASYNC_BUF_NUMBER     12// Number of buffers used by the asynchronous read 
+#define ASYNC_BUF_NUMBER 12// Number of buffers used by the asynchronous read 
 
 #define INI_FNAME "daq_chain_config.ini"
 
@@ -79,6 +80,7 @@ uint32_t new_center_freq;
 int center_freq_change_flag;
 static uint32_t ch_no, buffer_size;
 static int ctr_channel_dev_index;
+struct timeval noise_on_time;
 
 /*
  * This structure stores the configuration parameters, 
@@ -679,6 +681,11 @@ int main( int argc, char** argv )
                 if (noise_source_state == 1){
                     rtlsdr_set_gpio(rtl_rec->dev, 1, 0);
                     log_info("Noise source turned on ");
+                    // Log noise source turn on time for latency estimation
+                    gettimeofday(&noise_on_time, NULL);                    
+                    unsigned long long noise_on_time_us = (unsigned long long)(noise_on_time.tv_sec) * 1000 +
+                                                          (unsigned long long)(noise_on_time.tv_usec) / 1000;
+                    log_trace("Noise source turn on timestamp:%llu ms", noise_on_time_us);
                 }
                 else if (noise_source_state == 0){
                     rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
