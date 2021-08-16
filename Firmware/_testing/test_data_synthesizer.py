@@ -265,7 +265,7 @@ try:
         logger.info("Writing block: {:d}".format(b))
         iq_header.adc_overdrive_flags = 0
         iq_header.daq_block_index = b
-        iq_header.time_stamp = int(time.time())
+        iq_header.time_stamp = int(time.time_ns()/10**6)
         # Generate signal of interest
         
         if sig_type == "noise":

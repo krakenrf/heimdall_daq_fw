@@ -80,7 +80,7 @@ uint32_t new_center_freq;
 int center_freq_change_flag;
 static uint32_t ch_no, buffer_size;
 static int ctr_channel_dev_index;
-struct timeval noise_on_time;
+struct timeval frame_time_stamp;
 
 /*
  * This structure stores the configuration parameters, 
@@ -549,8 +549,13 @@ int main( int argc, char** argv )
              *---------------------
              *  Complete IQ header 
              *---------------------
-            */                        
-            iq_header->time_stamp = (uint64_t) time(NULL);
+            */
+            // Acquire local time in ms (Unix EPOC) and set timestamp field
+            gettimeofday(&frame_time_stamp, NULL);                    
+            uint64_t time_stamp_ms = (uint64_t)(frame_time_stamp.tv_sec) * 1000 +
+                                     (uint64_t)(frame_time_stamp.tv_usec) / 1000;
+            log_debug("Timestamp: %llu", time_stamp_ms);
+            iq_header->time_stamp = time_stamp_ms;
             iq_header->daq_block_index = (uint32_t) read_buff_ind;
             for(int i=0; i<ch_no; i++)
             {
@@ -582,12 +587,6 @@ int main( int argc, char** argv )
                 if (noise_source_state ==1) // Calibration frame
                 {
                     iq_header->frame_type=FRAME_TYPE_CAL;
-
-                    // Log calibration frame generation for latency estimation
-                    gettimeofday(&noise_on_time, NULL);                    
-                    unsigned long long noise_on_time_us = (unsigned long long)(noise_on_time.tv_sec) * 1000 +
-                                                          (unsigned long long)(noise_on_time.tv_usec) / 1000;
-                    log_trace("Calibration frame - timestamp:%llu ms", noise_on_time_us);                 
                 }
                 else // Normal data frame
                 {
