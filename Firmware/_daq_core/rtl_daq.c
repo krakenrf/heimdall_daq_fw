@@ -581,7 +581,13 @@ int main( int argc, char** argv )
                 iq_header->data_type=1;
                 if (noise_source_state ==1) // Calibration frame
                 {
-                    iq_header->frame_type=FRAME_TYPE_CAL;                    
+                    iq_header->frame_type=FRAME_TYPE_CAL;
+
+                    // Log calibration frame generation for latency estimation
+                    gettimeofday(&noise_on_time, NULL);                    
+                    unsigned long long noise_on_time_us = (unsigned long long)(noise_on_time.tv_sec) * 1000 +
+                                                          (unsigned long long)(noise_on_time.tv_usec) / 1000;
+                    log_trace("Calibration frame - timestamp:%llu ms", noise_on_time_us);                 
                 }
                 else // Normal data frame
                 {
@@ -681,11 +687,6 @@ int main( int argc, char** argv )
                 if (noise_source_state == 1){
                     rtlsdr_set_gpio(rtl_rec->dev, 1, 0);
                     log_info("Noise source turned on ");
-                    // Log noise source turn on time for latency estimation
-                    gettimeofday(&noise_on_time, NULL);                    
-                    unsigned long long noise_on_time_us = (unsigned long long)(noise_on_time.tv_sec) * 1000 +
-                                                          (unsigned long long)(noise_on_time.tv_usec) / 1000;
-                    log_trace("Noise source turn on timestamp:%llu ms", noise_on_time_us);
                 }
                 else if (noise_source_state == 0){
                     rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
