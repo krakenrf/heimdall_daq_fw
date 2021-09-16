@@ -78,7 +78,7 @@ int *new_gains;
 uint32_t new_center_freq;
 int center_freq_change_flag;
 static uint32_t ch_no, buffer_size;
-static int ctr_channel_dev_index;
+static int ctr_channel_index;
 
 /*
  * This structure stores the configuration parameters, 
@@ -368,6 +368,7 @@ void *read_thread_entry(void *arg)
         }
         
         /*Set all gpios into the default off state*/
+        rtlsdr_set_gpio(dev, 0, 0);
         rtlsdr_set_gpio(dev, 0, 1);
         rtlsdr_set_gpio(dev, 0, 2);
         rtlsdr_set_gpio(dev, 0, 3);
@@ -419,13 +420,23 @@ int main( int argc, char** argv )
     else
         log_info("Noise source control: disabled");    
     
+    /* Get control channel device index */
+    char dev_serial[16];
+    sprintf(dev_serial, "%d", config.ctr_channel_serial_no);
+    int ctr_channel_dev_index = rtlsdr_get_index_by_serial(dev_serial);    
+    if(ctr_channel_dev_index==-3)
+    {
+        log_warn("Failed to identify control channel index based on its configured serial number:%s",dev_serial);
+        log_warn("Set to default device index: 0");
+        ctr_channel_dev_index=0;
+    }
+
     /* Allocation */    
     struct iq_header_struct* iq_header = calloc(1, sizeof(struct iq_header_struct));
     
     new_gains=calloc(ch_no, sizeof(*new_gains));
     
-    rtl_receivers = malloc(sizeof(struct rtl_rec_struct)*ch_no);
-    char dev_serial[16];
+    rtl_receivers = malloc(sizeof(struct rtl_rec_struct)*ch_no);    
     for(int i=0; i<ch_no; i++)
     {
         struct rtl_rec_struct *rtl_rec = &rtl_receivers[i];
@@ -437,16 +448,11 @@ int main( int argc, char** argv )
         rtl_rec->dev_ind = dev_index;
         log_info("Device serial:%s, index: %d",dev_serial, dev_index);
         if(dev_index==-3){log_fatal("The serial numbers of the devices are not yet configured, exiting.."); return(-1);}
+
+        // Set noise control channel        
+        if(dev_index == ctr_channel_dev_index){ctr_channel_index=i;}
     }
-    // Configure control channel device index
-    sprintf(dev_serial, "%d", config.ctr_channel_serial_no);
-    ctr_channel_dev_index = rtlsdr_get_index_by_serial(dev_serial);
-    if(ctr_channel_dev_index==-3)
-    {
-        log_warn("Failed to identify control channel index based on its configured serial number:%s",dev_serial);
-        log_warn("Set to default device index: 0");
-        ctr_channel_dev_index=0;
-    }
+
    
     // Initialization
     for(int i=0; i<ch_no; i++)
@@ -675,7 +681,7 @@ int main( int argc, char** argv )
             /* Noise source switch request */
             if (last_noise_source_state != noise_source_state && config.en_noise_source_ctr==1)
             {
-                rtl_rec = &rtl_receivers[ctr_channel_dev_index];
+                rtl_rec = &rtl_receivers[ctr_channel_index];                
                 if (noise_source_state == 1){
                     rtlsdr_set_gpio(rtl_rec->dev, 1, 0);
                     log_info("Noise source turned on ");
