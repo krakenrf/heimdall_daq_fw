@@ -584,6 +584,10 @@ class delaySynchronizer():
                                  self.iq_compensation_cntr, 
                                  self.iq_header.daq_block_index))                                             
             
+            elif (self.iq_header.frame_type == IQHeader.FRAME_TYPE_DUMMY): 
+                # Reset instantaneous sync failed counter (New noise burst will start)
+                self.sync_failed_cntr = 0
+
             #############################################   
             #         SEND PROCESSED DATA BLOCK         #  
             #############################################

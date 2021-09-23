@@ -66,7 +66,7 @@ def get_serials():
     return serial_nos
 
 # Initialize logger
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 valid_gains = [0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496]
 valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann'] 
 # See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html#scipy.signal.get_window
@@ -112,7 +112,7 @@ def check_ini(parameters, en_hw_check=True):
     else:
         if not int(daq_params['log_level']) in [0,1,2,3,4,5]:
             error_list.append("Valid log level range is: 0-5. Currently it is: '{0}' ".format(daq_params['log_level']))
-
+    daq_buffer_size = -1
     if not chk_int(daq_params['daq_buffer_size']):
         error_list.append("DAQ buffer size must be a non-zero integer. Currently it is: '{0}' ".format(daq_params['daq_buffer_size']))
     else:
@@ -190,11 +190,13 @@ def check_ini(parameters, en_hw_check=True):
         cpi_size = int(preproc_params['cpi_size'])
         if cpi_size <1:
             error_list.append("CPI size must be a positive integer. Currently it is: '{0}' ".format(preproc_params['cpi_size']))
-
+    
+    decimation_raito = -1
     if not chk_int(preproc_params['decimation_ratio']):
         error_list.append("Decimation ratio must be an integer. Currently it is: '{0}' ".format(preproc_params['decimation_ratio']))
     else:
-        if int(preproc_params['decimation_ratio']) <1:
+        decimation_ratio = int(preproc_params['decimation_ratio'])
+        if decimation_ratio <1:
             error_list.append("Decimation ratio must be an integer. Currently it is: '{0}' ".format(preproc_params['decimation_ratio']))
 
     if not chk_float(preproc_params['fir_relative_bandwidth']):
@@ -221,6 +223,11 @@ def check_ini(parameters, en_hw_check=True):
     if chk_int(preproc_params['fir_tap_size']) and chk_int(preproc_params['fir_tap_size']):
         if int(preproc_params['fir_tap_size']) <= int(preproc_params['decimation_ratio']) and int(preproc_params['decimation_ratio']) !=1 :
             error_list.append("FIR tap size must be higher than the decimation ratio. Please consider increasing the tap size")
+
+    # -- Module operation related checks -- 
+    if daq_buffer_size != -1 and cpi_size != -1 and decimation_ratio !=-1:
+        if (cpi_size*decimation_ratio) < daq_buffer_size:
+            error_list.append("The duration of the CPI size (including decimation) must be larger than the duration of the DAQ buffer size")
 
     """
     --------------------------------
@@ -352,8 +359,6 @@ def check_ini(parameters, en_hw_check=True):
                 error_list.append("ADPIS gain init values should be one of the followings:{0}. Currently one of it is: '{1}' ".format(valid_gains,int(gain_str)))
     if en_hw_check and len(gains_init_str) != device_count:
         error_list.append("The number of specified ADPIS gain init values does not much with availble channels. Set:{0}, available:{1}".format(len(gains_init_str), device_count))
-
-    # TODO: Check the available channels: device_count=$(lsusb | grep "Realtek" | wc -l)
 
     """
     ----------------------------------------
