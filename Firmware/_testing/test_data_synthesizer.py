@@ -140,7 +140,7 @@ power_diffs  = [0, -3, 3, 2, 1]# dB
 
 blocks = 10000
 block_size = N_daq*2    
-rf_freq = 300 *10**6 # Only used in the correspondig header field
+rf_freq = parser.getint('daq','center_freq') # Only used in the correspondig header field
 fs  = 2.4 *10**6 # Sampling frequency [Hz]
 sig_type = "noise" #"none" / "noise" / "cw" / "swept-cw" / "pulse"
 sig_freq = 0.024 * 10**6# Interpreted as the distance from the center freq [Hz]
