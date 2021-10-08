@@ -8,7 +8,7 @@
  * Author  : Tamas Peto
  * License : GNU GPL V3
  *
- * Copyright (C) 2018-2020  Tamás Pető
+ * Copyright (C) 2018-2021  Tamás Pető
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <unistd.h>
 #include "rtl_daq.h"
@@ -288,6 +289,10 @@ int main(int argc, char* argv[])
                     /* Place IQ header into the output buffer*/
                     iq_header->cpi_length = out_buffer_size;
                     iq_header->adc_overdrive_flags = adc_overdrive_flags;
+
+                    float timestamp_adjust = (float) (available-out_buffer_size*2)/2*1000/iq_header->sampling_freq;                    
+                    log_debug("Timestamp adjust: %f ms", timestamp_adjust);
+                    iq_header->time_stamp -= (int) round(timestamp_adjust);                    
                     adc_overdrive_flags = 0;
                     memcpy(frame_ptr, iq_header,1024);
                     

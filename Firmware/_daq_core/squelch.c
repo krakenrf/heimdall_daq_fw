@@ -8,7 +8,7 @@
  * Author  : Tamas Peto
  * License : GNU GPL V3
  * 
- * Copyright (C) 2018-2020  Tamás Pető
+ * Copyright (C) 2018-2021  Tamás Pető
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <math.h>
 #include <unistd.h>
 #include <semaphore.h>
 #include <string.h>
@@ -406,7 +407,11 @@ int main(int argc, char* argv[])
                         scan_start = iq_frame_in->header->cpi_length*2;
                     }
                     else if(iq_frame_out->payload_size == iq_frame_in->payload_size) // DATA or CAL frames
-                    {   
+                    { 
+                        float timestamp_adjust = (float) (iq_frame_out->header->cpi_length*2-scan_start)/2*1000/iq_frame_out->header->sampling_freq;                        
+                        log_debug("Timestamp adjust: %f ms", timestamp_adjust);                        
+                        iq_frame_out->header->time_stamp -= (int) round(timestamp_adjust);
+
                         iq_frame_out->header->adc_overdrive_flags = adc_overdrive_flags;                        
                         adc_overdrive_flags = 0;
                         triggered     = 0;
