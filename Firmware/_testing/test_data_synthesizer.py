@@ -123,6 +123,7 @@ N_daq = parser.getint('daq', 'daq_buffer_size')
 M = parser.getint('hw', 'num_ch')
 R = parser.getint('pre_processing', 'decimation_ratio')
 fs  = parser.getint('daq', 'sample_rate') # Sampling frequency [Hz]
+rf_freq = parser.getint('daq','center_freq') # Only used in the correspondig header field
 
 # Synchronization related parameters
 delays = [0]*M 
@@ -141,7 +142,6 @@ power_diffs  = [0, -3, 3, 2, 1]# dB
 
 blocks = 10000
 block_size = N_daq*2    
-rf_freq = 300 *10**6 # Only used in the correspondig header field
 sig_type = "noise" #"none" / "noise" / "cw" / "swept-cw" / "pulse"
 sig_freq = 0.024 * 10**6# Interpreted as the distance from the center freq [Hz]
 # For swept-CW source type:
