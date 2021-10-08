@@ -27,10 +27,10 @@ sync: iq_header.c log.c ini.c sync.c rtl_daq.h
 	$(CC) $(CFLAGS) log.o ini.o iq_header.o -o sync.out sync.c -lpthread
 
 rebuffer: sh_mem_util.c iq_header.c log.c ini.c rebuffer.c rtl_daq.h
-	$(CC) $(CFLAGS) sh_mem_util.o log.o ini.o iq_header.o -o rebuffer.out rebuffer.c -lrt
+	$(CC) $(CFLAGS) sh_mem_util.o log.o ini.o iq_header.o -o rebuffer.out rebuffer.c -lrt -lm
 
 squelch: sh_mem_util.c iq_header.c log.c ini.c squelch.c
-	$(CC) $(CFLAGS) sh_mem_util.o log.o ini.o iq_header.o -o squelch.out squelch.c -lpthread -lrt
+	$(CC) $(CFLAGS) sh_mem_util.o log.o ini.o iq_header.o -o squelch.out squelch.c -lpthread -lrt -lm
 
 decimate_x86: sh_mem_util.c iq_header.c log.c ini.c fir_decimate.c
 	$(CC) $(CFLAGS) -c fir_decimate.c -o fir_decimate.o

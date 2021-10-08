@@ -6,9 +6,9 @@
  * Project : HeIMDALL DAQ Firmware
  * License : GNU GPL V3
  * Author  : Tamas Peto, Carl Laufer
- * Compatible hardware: RTL-SDR v3, KerberosSDR
+ * Compatible hardware: RTL-SDR v3, KerberosSDR, KrakenSDR
  *
- * Copyright (C) 2018-2020  Tamás Pető, Carl Laufer
+ * Copyright (C) 2018-2021  Tamás Pető, Carl Laufer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <sys/time.h>  // Used for latency estimation
 
 #include "ini.h"
 #include "log.h"
@@ -49,7 +50,7 @@
 
 #define NUM_BUFF 8  // Number of buffers used in the circular, coherent read buffer
 #define CFN "_data_control/rec_control_fifo" // Receiver control FIFO name 
-#define ASYNC_BUF_NUMBER     12// Number of buffers used by the asynchronous read 
+#define ASYNC_BUF_NUMBER 12// Number of buffers used by the asynchronous read 
 
 #define INI_FNAME "daq_chain_config.ini"
 
@@ -79,6 +80,7 @@ uint32_t new_center_freq;
 int center_freq_change_flag;
 static uint32_t ch_no, buffer_size;
 static int ctr_channel_dev_index;
+struct timeval frame_time_stamp;
 
 /*
  * This structure stores the configuration parameters, 
@@ -547,8 +549,13 @@ int main( int argc, char** argv )
              *---------------------
              *  Complete IQ header 
              *---------------------
-            */                        
-            iq_header->time_stamp = (uint64_t) time(NULL);
+            */
+            // Acquire local time in ms (Unix EPOC) and set timestamp field
+            gettimeofday(&frame_time_stamp, NULL);                    
+            uint64_t time_stamp_ms = (uint64_t)(frame_time_stamp.tv_sec) * 1000 +
+                                     (uint64_t)(frame_time_stamp.tv_usec) / 1000;
+            log_debug("Timestamp: %llu", time_stamp_ms);
+            iq_header->time_stamp = time_stamp_ms;
             iq_header->daq_block_index = (uint32_t) read_buff_ind;
             for(int i=0; i<ch_no; i++)
             {
@@ -579,7 +586,7 @@ int main( int argc, char** argv )
                 iq_header->data_type=1;
                 if (noise_source_state ==1) // Calibration frame
                 {
-                    iq_header->frame_type=FRAME_TYPE_CAL;                    
+                    iq_header->frame_type=FRAME_TYPE_CAL;
                 }
                 else // Normal data frame
                 {
