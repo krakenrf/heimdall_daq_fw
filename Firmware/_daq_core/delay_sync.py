@@ -34,6 +34,9 @@ from time import sleep
 class delaySynchronizer():
     
     def __init__(self):
+        
+        logging.basicConfig(level=10)
+        self.logger = logging.getLogger(__name__)
 
         self.scf_name = "_data_control/sync_control_fifo"
         self.sync_ctr_fifo = None
@@ -42,7 +45,7 @@ class delaySynchronizer():
         self.out_shmem_iface_iq = None
         self.out_shmem_iface_hwc = None
         
-        self.logging_level = 0
+        self.log_level = 0
         self.ignore_frame_drop_warning = True
         
         self.sync_delay_byte = 'd'.encode('ascii')
@@ -82,9 +85,8 @@ class delaySynchronizer():
         # Overwrite default configuration
         self._read_config_file("daq_chain_config.ini")
 
-        # Initialize logger        
-        logging.basicConfig(level=self.logging_level)
-        self.logger = logging.getLogger(__name__)
+        # Configure logger        
+        self.logger.setLevel(self.log_level)
         float_formatter = "{:.2f}".format
         np.set_printoptions(formatter={'float_kind':float_formatter})
         
@@ -157,7 +159,7 @@ class delaySynchronizer():
         else:
             self.in_shmem_iface_name = "decimator_out"
         
-        self.logging_level=(parser.getint('daq', 'log_level')*10)
+        self.log_level=(parser.getint('daq', 'log_level')*10)
 
         # Convert to voltage ratio
         self.amp_diff_tolerance = 10**(self.amp_diff_tolerance/20)
@@ -196,8 +198,10 @@ class delaySynchronizer():
             return -1
         
         # Open shared memory interface towards the iq server module
+        if self.N >= self.N_proc: out_shmem_size = int(1024+self.N*2*self.M*(32/8))
+        else: out_shmem_size = int(1024+self.N_proc*2*self.M*(32/8))
         self.out_shmem_iface_iq = outShmemIface("delay_sync_iq",
-                                 int(1024+self.N*2*self.M*(32/8)),
+                                 out_shmem_size,
                                  drop_mode = True)
         if not self.out_shmem_iface_iq.init_ok:
             self.logger.critical("Shared memory (IQ server) initialization failed, exiting..")
@@ -205,7 +209,7 @@ class delaySynchronizer():
 
         # Open shared memory interface towards the hardware controller module
         self.out_shmem_iface_hwc = outShmemIface("delay_sync_hwc",
-                                 int(1024+self.N*2*self.M*(32/8)),
+                                 out_shmem_size,
                                  drop_mode = True)
         if not self.out_shmem_iface_hwc.init_ok:
             self.logger.critical("Shared memory (HWC) initialization failed, exiting..")
@@ -363,8 +367,8 @@ class delaySynchronizer():
             if (self.iq_header.frame_type != IQHeader.FRAME_TYPE_DUMMY):  # Check frame type
 
                 # -> IQ Preprocessing <-
-                # TODO: Check payload size     
-                if incoming_payload_size > 0:            
+                # TODO: Check payload size
+                if incoming_payload_size > 0:
                     if active_buffer_index_iq !=3:
                         iq_frame_buffer_out = (self.out_shmem_iface_iq.buffers[active_buffer_index_iq]).view(dtype=np.complex64)
                         # IQ header offset:1 sample -> 8 byte, 1024 byte length header -> 128 "sample"
@@ -386,7 +390,11 @@ class delaySynchronizer():
                             for m in self.channel_list:
                                 iq_samples_out[m, :] *= self.iq_corrections[m]
                     
-                    iq_samples = iq_samples_out[:,0:self.N_proc] # Cut for further processing                              
+                    # Truncate IQ sample matrix for further processing
+                    if self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL:
+                        iq_samples = iq_samples_out[:,:] # payload size must be N_proc
+                    elif self.N >= self.N_proc: iq_samples = iq_samples_out[:,0:self.N_proc] # Normal truncation
+                    else: iq_samples = iq_samples_out[:,:] # Only N sample is availabe in data frames 
                 #
                 #------------------------------------------>
                 #            
@@ -415,7 +423,7 @@ class delaySynchronizer():
                         y_padd = np.concatenate([np_zeros, iq_samples[m, 0:self.N_proc]])
                         y_fft = np.fft.fft(y_padd)
                         self.corr_functions[m,:] = np.abs(np.fft.ifft(x_fft.conj() * y_fft))**2
-                    # ->  Calculate sample delays (Not sub sample), check dynamic range
+                    # ->  Calculate sample delays, check dynamic range
                     # WARNING: This dynamic range checking assumes dirac like coorelation peak                    
                     for m in self.channel_list:
                         peak_index = np.argmax(self.corr_functions[m, :])
@@ -432,9 +440,8 @@ class delaySynchronizer():
                             break
                         
                         # Calculate sample offset
-                        self.delays[m] = (self.N_proc - peak_index)*self.R
-                        # Warning: Use this only until sub sample delay calibration is not implemented
-                        if np.abs(self.delays[m]) >= self.R:
+                        self.delays[m] = (self.N_proc - peak_index)                        
+                        if np.abs(self.delays[m]) >= 1:
                             sample_sync_flag = False # Misalling detected
                             delay_update_flag=1
                         self.logger.debug("Channel {:d}, delay: {:d}".format(m, self.delays[m]))

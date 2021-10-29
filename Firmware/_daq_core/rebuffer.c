@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
     // Determine the neccesary size of the circular buffers
     int buffer_num_data = out_buffer_size / in_buffer_size + 2;
     int buffer_num_cal  = cal_out_buffer_size / in_buffer_size + 2;
-    if (buffer_num_data > buffer_num_cal) buffer_num = buffer_num_data;
+    if (buffer_num_data >= buffer_num_cal) buffer_num = buffer_num_data;
     else buffer_num = buffer_num_cal;     
     log_info("Buffer no: %d", buffer_num);
     
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
     
     /* Initializing output shared memory interface */
     struct shmem_transfer_struct* output_sm_buff = calloc(1, sizeof(struct shmem_transfer_struct));
-    if (out_buffer_size > cal_out_buffer_size)
+    if (out_buffer_size >= cal_out_buffer_size)
     {
         output_sm_buff->shared_memory_size = out_buffer_size*ch_num*sizeof(uint8_t)*2+IQ_HEADER_LENGTH;
     }

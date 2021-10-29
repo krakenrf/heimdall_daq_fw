@@ -127,8 +127,8 @@ rf_freq = parser.getint('daq','center_freq') # Only used in the correspondig hea
 
 # Synchronization related parameters
 delays = [0]*M 
-#delays [1] = 10
-#delays [7] = 30
+delays [1] = 10
+delays [3] = 30
 
 phase_diffs = [0]*M 
 phase_diffs = [-10, 0, 20, 20, 40] # deg

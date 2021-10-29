@@ -206,7 +206,7 @@ class TesterDecimatorModule(unittest.TestCase):
         self._run_std_frame_test(frame_count, frame_type, frame_size)
         # -> Assert <-
         self.assertFalse(self.check_frame(join(unit_test_path,'decimator_test_0.dat'),output_frame_count, frame_type))
-    #@unittest.skip("Skipped during development")
+    @unittest.skip("Skipped during development")
     def test_case_5_10(self):
         logging.info("-> Starting Test Case [5_11] : Transfer function test")
         # -> Assume <-        
@@ -304,7 +304,7 @@ class TesterDecimatorModule(unittest.TestCase):
         recorder.join()
         logging.info("Ramp test finished, checking output..")        
         self.assertFalse(self.check_ramp(join(unit_test_path,'decimator_test_0.dat'), frame_count))
-    #@unittest.skip("Skipped during development")
+    @unittest.skip("Skipped during development")
     def test_case_5_100(self):
         logging.info("-> Starting Test Case [5_100] : Throughput testing")
         

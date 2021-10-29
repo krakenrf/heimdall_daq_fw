@@ -132,7 +132,7 @@ int main(int argc, char **argv)
     
      /* Initializing input shared memory interface */
     struct shmem_transfer_struct* input_sm_buff = calloc(1, sizeof(struct shmem_transfer_struct));
-    if((config.cpi_size*dec)>config.cal_size)
+    if((config.cpi_size*dec)>=config.cal_size)
     {input_sm_buff->shared_memory_size = config.cpi_size*config.num_ch*dec*4*2+IQ_HEADER_LENGTH;}
     else
     {input_sm_buff->shared_memory_size = config.cal_size*config.num_ch*4*2+IQ_HEADER_LENGTH;}
