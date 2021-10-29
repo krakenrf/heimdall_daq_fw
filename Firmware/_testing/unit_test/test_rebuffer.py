@@ -6,7 +6,7 @@
 	License : GNU GPL V3
 	Author  : Tamas Peto
   
-	Copyright (C) 2018-2020  Tamás Pető
+	Copyright (C) 2018-2021  Tamás Pető
 	
 	This program is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -78,7 +78,7 @@ class TesterRebufferModule(unittest.TestCase):
 
                 
         # Save default config file parameters
-        self.N, self. R, self.N_daq = self._read_config_file()
+        self.N, self. R, self.N_daq, self.N_cal = self._read_config_file()
         
     def tearDown(self):
         # Close log files
@@ -96,45 +96,42 @@ class TesterRebufferModule(unittest.TestCase):
         proc.wait()
         
         # Write back default config file parameters
-        self._write_config_file(self.N, self.R, self.N_daq)
+        self._write_config_file(self.N, self.R, self.N_daq, self.N_cal)
 
     #############################################
     #               TEST FUNCTIONS              #  
     #############################################
-    
+    #@unittest.skip("Skipped during development")
     def test_case_2_0(self):
         logging.info("-> Starting Test Case [2_0] :")
         # -> Assume <-
         frame_count = 10
         frame_type  = IQHeader.FRAME_TYPE_DATA
-        self._write_config_file(N=2**18, R=1, N_daq=2**18)        
+        self._write_config_file(N=2**18, R=1, N_daq=2**18, N_cal=2**18)
         # -> Action <-
         self._run_std_frame_test(frame_count, frame_type)               
         # -> Assert <-        
-        self.assertFalse(self.check_frame(join(unit_test_path,'rebuffer_test_0.dat'), frame_count, frame_type))
-    
+        self.assertFalse(self.check_frame(join(unit_test_path,'rebuffer_test_0.dat'), frame_count, frame_type))    
     def test_case_2_1(self):
         logging.info("-> Starting Test Case [2_1] :")
         # -> Assume <-
         frame_count = 10
         frame_type  = IQHeader.FRAME_TYPE_DUMMY
-        self._write_config_file(N=2**18, R=1, N_daq=2**18)        
+        self._write_config_file(N=2**18, R=1, N_daq=2**18, N_cal=2**18)
         # -> Action <-
         self._run_std_frame_test(frame_count, frame_type)        
         # -> Assert <-        
         self.assertFalse(self.check_frame(join(unit_test_path,'rebuffer_test_0.dat'), frame_count, frame_type))
-    
     def test_case_2_2(self):
         logging.info("-> Starting Test Case [2_2] :")
         # -> Assume <-
         frame_count = 10
         frame_type  = IQHeader.FRAME_TYPE_CAL
-        self._write_config_file(N=2**18, R=1, N_daq=2**18)
+        self._write_config_file(N=2**18, R=1, N_daq=2**18, N_cal=2**18)
         # -> Action <-
         self._run_std_frame_test(frame_count, frame_type)
         # -> Assert <-        
         self.assertFalse(self.check_frame(join(unit_test_path,'rebuffer_test_0.dat'), frame_count, frame_type))
-    
     def test_case_2_3(self):
         logging.info("-> Starting Test Case [2_3] :")
         # -> Assume <-
@@ -142,29 +139,29 @@ class TesterRebufferModule(unittest.TestCase):
         frame_type  = IQHeader.FRAME_TYPE_DATA
         N     = 2**19
         R     = 1
-        N_daq = 2**18        
-        self._write_config_file(N,R,N_daq)
+        N_daq = 2**18
+        N_cal = 2**20
+        self._write_config_file(N,R,N_daq,N_cal)
         output_frame_count = (N_daq*frame_count)//(N*R)
         # -> Action <-
         self._run_std_frame_test(frame_count, frame_type)
         # -> Assert <-        
         self.assertFalse(self.check_frame(join(unit_test_path,'rebuffer_test_0.dat'), output_frame_count, frame_type))
-    
     def test_case_2_4(self):
         logging.info("-> Starting Test Case [2_4] :")
         # -> Assume <-
         frame_count = 10
         frame_type  = IQHeader.FRAME_TYPE_CAL
-        N     = 2**19
-        R     = 1
-        N_daq = 2**18        
-        self._write_config_file(N,R,N_daq)
-        output_frame_count = (N_daq*frame_count)//(N*R)
+        N     = 31    # Should be irrelevant
+        R     = 10    # Should be irrelevant
+        N_daq = 2**18
+        N_cal = 2**20
+        self._write_config_file(N,R,N_daq,N_cal)
+        output_frame_count = (N_daq*frame_count)//(N_cal)
         # -> Action <-
         self._run_std_frame_test(frame_count, frame_type)
         # -> Assert <-        
         self.assertFalse(self.check_frame(join(unit_test_path,'rebuffer_test_0.dat'), output_frame_count, frame_type))
-    
     def test_case_2_5(self):
         logging.info("-> Starting Test Case [2_5] :")
         # -> Assume <-
@@ -172,14 +169,14 @@ class TesterRebufferModule(unittest.TestCase):
         frame_type  = IQHeader.FRAME_TYPE_DATA     
         N     = 101
         R     = 1
-        N_daq = 37           
-        self._write_config_file(N,R,N_daq)
+        N_daq = 37
+        N_cal = 257 # Should irrelevant
+        self._write_config_file(N,R,N_daq,N_cal)
         output_frame_count = (N_daq*frame_count)//(N*R)
         # -> Action <-
         self._run_std_frame_test(frame_count, frame_type,sample_size=N_daq)
         # -> Assert <-        
         self.assertFalse(self.check_frame(join(unit_test_path,'rebuffer_test_0.dat'), output_frame_count , frame_type))
-    
     def test_case_2_6(self):
         logging.info("-> Starting Test Case [2_6] :")
         # -> Assume <-
@@ -187,14 +184,14 @@ class TesterRebufferModule(unittest.TestCase):
         frame_type  = IQHeader.FRAME_TYPE_DATA     
         N     = 2**18
         R     = 3
-        N_daq = 2**18           
-        self._write_config_file(N,R,N_daq)
+        N_daq = 2**18   
+        N_cal = 257 # Should irrelevant        
+        self._write_config_file(N,R,N_daq,N_cal)
         output_frame_count = (N_daq*frame_count)//(N*R)
         # -> Action <-
         self._run_std_frame_test(frame_count, frame_type)
         # -> Assert <-        
         self.assertFalse(self.check_frame(join(unit_test_path,'rebuffer_test_0.dat'), output_frame_count , frame_type))
-    
     def test_case_2_10(self):
         logging.info("-> Starting Test Case [2_10] : Ramp test")
         # -> Assume <-
@@ -202,29 +199,29 @@ class TesterRebufferModule(unittest.TestCase):
         N     = 2**18
         R     = 1
         N_daq = 2**18
+        N_cal = 257 # Should irrelevant  
         frame_type  = IQHeader.FRAME_TYPE_DATA
         output_frame_count = (N_daq*frame_count)//(N*R)
-        self._write_config_file(N=N, R=R, N_daq=N_daq)        
+        self._write_config_file(N, R, N_daq, N_cal)        
         # -> Action <-        
         self._run_ramp_test(frame_count, frame_type)        
         # -> Assert <-
         self.assertFalse(self.check_ramp(join(unit_test_path,'rebuffer_test_0.dat'),output_frame_count))
-    
     def test_case_2_11(self):
         logging.info("-> Starting Test Case [2_11] :")
         # -> Assume <-
         frame_count = 10
-        N     = 2**18
-        R     = 1
+        N     = 31    # Should irrelevant  
+        R     = 4     # Should irrelevant  
         N_daq = 2**18
+        N_cal = 2**18
         frame_type  = IQHeader.FRAME_TYPE_CAL
-        output_frame_count = (N_daq*frame_count)//(N*R)
-        self._write_config_file(N=N, R=R, N_daq=N_daq)
+        output_frame_count = (N_daq*frame_count)//(N_cal)
+        self._write_config_file(N, R, N_daq, N_cal)
         # -> Action <-        
         self._run_ramp_test(frame_count, frame_type)
         # -> Assert <-
         self.assertFalse(self.check_ramp(join(unit_test_path,'rebuffer_test_0.dat'),output_frame_count))
-    
     def test_case_2_12(self):
         logging.info("-> Starting Test Case [2_12] :")        
         # -> Assume <-
@@ -233,8 +230,9 @@ class TesterRebufferModule(unittest.TestCase):
         N     = 101
         R     = 2
         N_daq = 37
+        N_cal = 257 # Should irrelevant  
         output_frame_count = (N_daq*frame_count)//(N*R)
-        self._write_config_file(N,R,N_daq)
+        self._write_config_file(N,R,N_daq,N_cal)
         # -> Action <-        
         self._run_ramp_test(frame_count, frame_type, sample_size=N_daq)
         # -> Assert <-
@@ -408,11 +406,12 @@ class TesterRebufferModule(unittest.TestCase):
             return 0,0,0
         N = parser.getint('pre_processing', 'cpi_size')        
         R = parser.getint('pre_processing', 'decimation_ratio')
-        N_daq = parser.getint('daq','daq_buffer_size')
+        N_daq  = parser.getint('daq','daq_buffer_size')
+        N_cal  = parser.getint('calibration', 'corr_size')
                
-        return (N, R, N_daq)
+        return (N, R, N_daq, N_cal)
     
-    def _write_config_file(self, N, R, N_daq):
+    def _write_config_file(self, N, R, N_daq, N_cal):
         """
         
         """
@@ -424,6 +423,7 @@ class TesterRebufferModule(unittest.TestCase):
         parser['pre_processing']['cpi_size'] = str(N)
         parser['pre_processing']['decimation_ratio'] = str(R)       
         parser['daq']['daq_buffer_size'] = str(N_daq)
+        parser['calibration']['corr_size'] = str(N_cal)
         with open(config_filename, 'w') as configfile:
             parser.write(configfile)
         return 0

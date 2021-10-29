@@ -45,7 +45,7 @@
 #define CHK_CTR_READ(r, e) if(r != e)     {exit_flag = ERR_CTR_THREAD_READ;}
 
 
-#define MAX_IQFRAME_PAYLOAD_SIZE 1048576 // [sample] per channel
+#define MAX_IQFRAME_PAYLOAD_SIZE 8388608 // 2^23[sample] per channel
 //Should be greather than the cpi_size in the daq_chain_config.ini
 void error_code_log(int exit_flag)
 /*

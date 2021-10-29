@@ -55,6 +55,7 @@ typedef struct
 {
     int num_ch;
     int cpi_size;
+    int cal_size;
     int decimation_ratio;
     int en_filter_reset;
     int tap_size;
@@ -73,6 +74,8 @@ static int handler(void* conf_struct, const char* section, const char* name,
     {pconfig->num_ch = atoi(value);}
     else if (MATCH("pre_processing", "cpi_size")) 
     {pconfig->cpi_size = atoi(value);}
+    else if (MATCH("calibration", "corr_size")) 
+    {pconfig->cal_size = atoi(value);}
     else if (MATCH("pre_processing", "decimation_ratio")) 
     {pconfig->decimation_ratio = atoi(value);}
     else if (MATCH("pre_processing", "en_filter_reset")) 
@@ -118,6 +121,8 @@ int main(int argc, char **argv)
     log_info("Channel number: %d", ch_no);
     log_info("Decimation ratio: %d",dec);
     log_info("CPI size: %d", config.cpi_size);
+    log_info("Calibration sample size : %d", config.cal_size);
+    
                 
     /*
     *-------------------------------------
@@ -127,7 +132,10 @@ int main(int argc, char **argv)
     
      /* Initializing input shared memory interface */
     struct shmem_transfer_struct* input_sm_buff = calloc(1, sizeof(struct shmem_transfer_struct));
-    input_sm_buff->shared_memory_size = config.cpi_size*config.num_ch*dec*4*2+IQ_HEADER_LENGTH;
+    if((config.cpi_size*dec)>config.cal_size)
+    {input_sm_buff->shared_memory_size = config.cpi_size*config.num_ch*dec*4*2+IQ_HEADER_LENGTH;}
+    else
+    {input_sm_buff->shared_memory_size = config.cal_size*config.num_ch*4*2+IQ_HEADER_LENGTH;}
     input_sm_buff->io_type = 1; // Input type
     
     strcpy(input_sm_buff->shared_memory_names[0], DECIMATOR_IN_SM_NAME_A);
@@ -246,70 +254,88 @@ int main(int argc, char **argv)
                 memcpy(frame_ptr, iq_header,1024);                
 
                 /* Update header fields */
-                iq_header = (struct iq_header_struct*) frame_ptr;                       
-                iq_header->sampling_freq = iq_header->adc_sampling_freq / (uint64_t) dec;            
-                iq_header->cpi_length = (uint32_t) iq_header->cpi_length/dec; 
+                iq_header = (struct iq_header_struct*) frame_ptr;
                 iq_header->data_type = 3; // Data type is decimated IQ            
                 iq_header->sample_bit_depth = 32; // Complex float 32
                 iq_header->cpi_index = cpi_index;
-                
-                /* Perform filtering (on data or cal frames)*/
-                if (iq_header->cpi_length > 0)
-                {
-                    if (filter_reset)
-                        #ifdef ARM_NEON
-                            {for(int m=0;m<ch_no*2;m++){memset(fir_state_vectors[m], 0, (tap_size+fir_blocksize-1)*sizeof(ne10_float32_t));}}
-                        #else
-                            log_warn("Filter reset is not yet implemented on X86 platform");
-                        #endif
-                    for(int ch_index=0;ch_index<iq_header->active_ant_chs;ch_index++)                    
-                    {
-                        #ifndef ARM_NEON
-                            // For downsampling  - X86
-                            int out_sample_index=0; 
-                            int dec_index = 0; 
-                        #endif
-                        //De-interleaving input data
-                        for(int sample_index=0; sample_index<iq_header->cpi_length*dec; sample_index++)
-                        {
-                            fir_input_buffer_i[sample_index] = (input_data_buffer[2*sample_index]-DC)/128;   // I
-                            fir_input_buffer_q[sample_index] = (input_data_buffer[2*sample_index+1]-DC)/128; // Q
-                        }
-                        // Perform filtering
-                        #ifdef ARM_NEON
-                            for (int b = 0; b < iq_header->cpi_length*dec/fir_blocksize; b++)
-                            {
-                                ne10_fir_decimate_float_c(&fir_cfgs[2*ch_index], fir_input_buffer_i + (b * fir_blocksize), fir_output_buffer_i + (b * config.cpi_size), fir_blocksize);
-                                ne10_fir_decimate_float_c(&fir_cfgs[2*ch_index+1], fir_input_buffer_q + (b * fir_blocksize), fir_output_buffer_q + (b * config.cpi_size), fir_blocksize);
-                            }    
-                        #else
-                            kfr_filter_process_f32(fir_filter_plan, fir_output_buffer_i, fir_input_buffer_i, iq_header->cpi_length*dec);
-                            kfr_filter_process_f32(fir_filter_plan, fir_output_buffer_q, fir_input_buffer_q, iq_header->cpi_length*dec);                        
-                        #endif
 
-                        //Re-interleave output data on ARM devices
-                        #ifdef ARM_NEON
-                            for(int sample_index=0; sample_index<iq_header->cpi_length; sample_index++)
-                            {
-                                output_data_buffer[2*sample_index]   = fir_output_buffer_i[sample_index];
-                                output_data_buffer[2*sample_index+1] = fir_output_buffer_q[sample_index];
-                            }
-                        #else
-                        //Downsample and re-interleave output data on X86
+                if (iq_header->frame_type==FRAME_TYPE_DATA)
+                {
+                    iq_header->sampling_freq = iq_header->adc_sampling_freq / (uint64_t) dec;
+                    iq_header->cpi_length = (uint32_t) iq_header->cpi_length/dec; 
+                
+                    /* Perform filtering on data type frames*/
+                    if (iq_header->cpi_length > 0)
+                    {
+                        if (filter_reset)
+                            #ifdef ARM_NEON
+                                {for(int m=0;m<ch_no*2;m++){memset(fir_state_vectors[m], 0, (tap_size+fir_blocksize-1)*sizeof(ne10_float32_t));}}
+                            #else
+                                log_warn("Filter reset is not yet implemented on X86 platform");
+                            #endif
+                        for(int ch_index=0;ch_index<iq_header->active_ant_chs;ch_index++)                    
+                        {
+                            #ifndef ARM_NEON
+                                // For downsampling  - X86
+                                int out_sample_index=0; 
+                                int dec_index = 0; 
+                            #endif
+                            //De-interleaving input data
                             for(int sample_index=0; sample_index<iq_header->cpi_length*dec; sample_index++)
                             {
-                                dec_index  = (dec_index+1)%dec; // when zero the sample is forwarded
-                                if(dec_index==0)
+                                fir_input_buffer_i[sample_index] = (input_data_buffer[2*sample_index]-DC)/128;   // I
+                                fir_input_buffer_q[sample_index] = (input_data_buffer[2*sample_index+1]-DC)/128; // Q
+                            }
+                            // Perform filtering
+                            #ifdef ARM_NEON
+                                for (int b = 0; b < iq_header->cpi_length*dec/fir_blocksize; b++)
                                 {
-                                    output_data_buffer[out_sample_index]   = fir_output_buffer_i[sample_index];
-                                    output_data_buffer[out_sample_index+1] = fir_output_buffer_q[sample_index];
-                                    out_sample_index+=2;
+                                    ne10_fir_decimate_float_c(&fir_cfgs[2*ch_index], fir_input_buffer_i + (b * fir_blocksize), fir_output_buffer_i + (b * config.cpi_size), fir_blocksize);
+                                    ne10_fir_decimate_float_c(&fir_cfgs[2*ch_index+1], fir_input_buffer_q + (b * fir_blocksize), fir_output_buffer_q + (b * config.cpi_size), fir_blocksize);
+                                }    
+                            #else
+                                kfr_filter_process_f32(fir_filter_plan, fir_output_buffer_i, fir_input_buffer_i, iq_header->cpi_length*dec);
+                                kfr_filter_process_f32(fir_filter_plan, fir_output_buffer_q, fir_input_buffer_q, iq_header->cpi_length*dec);                        
+                            #endif
+
+                            //Re-interleave output data on ARM devices
+                            #ifdef ARM_NEON
+                                for(int sample_index=0; sample_index<iq_header->cpi_length; sample_index++)
+                                {
+                                    output_data_buffer[2*sample_index]   = fir_output_buffer_i[sample_index];
+                                    output_data_buffer[2*sample_index+1] = fir_output_buffer_q[sample_index];
                                 }
-                            }                            
-                        #endif
-                        input_data_buffer  += 2*iq_header->cpi_length*dec;
-                        output_data_buffer += 2*iq_header->cpi_length;
-                    }                                     
+                            #else
+                            //Downsample and re-interleave output data on X86
+                                for(int sample_index=0; sample_index<iq_header->cpi_length*dec; sample_index++)
+                                {
+                                    dec_index  = (dec_index+1)%dec; // when zero the sample is forwarded
+                                    if(dec_index==0)
+                                    {
+                                        output_data_buffer[out_sample_index]   = fir_output_buffer_i[sample_index];
+                                        output_data_buffer[out_sample_index+1] = fir_output_buffer_q[sample_index];
+                                        out_sample_index+=2;
+                                    }
+                                }                            
+                            #endif
+                            input_data_buffer  += 2*iq_header->cpi_length*dec;
+                            output_data_buffer += 2*iq_header->cpi_length;
+                        }                                     
+                    }
+                                }
+                else if (iq_header->frame_type==FRAME_TYPE_CAL)
+                {
+                    iq_header->sampling_freq = iq_header->adc_sampling_freq;
+                    iq_header->cpi_length = (uint32_t) iq_header->cpi_length;
+
+                    /* Convert cint8 to cfloat32 without filtering and decimation on cal type frames*/
+                    for(int sample_index=0; sample_index<iq_header->cpi_length*iq_header->active_ant_chs; sample_index++)
+                        {
+                            output_data_buffer[2*sample_index]   = (float)(input_data_buffer[2*sample_index]-DC)/128;   // I
+                            output_data_buffer[2*sample_index+1] = (float)(input_data_buffer[2*sample_index+1]-DC)/128; // Q
+
+                        }
+
                 }
                 log_trace("<--Transfering frame type: %d, daq ind:[%d]",iq_header->frame_type, iq_header->daq_block_index);
                 send_ctr_buff_ready(output_sm_buff, active_buff_ind);                
