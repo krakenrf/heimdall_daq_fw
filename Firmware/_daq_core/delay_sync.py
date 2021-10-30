@@ -609,7 +609,7 @@ class delaySynchronizer():
                 self.iq_header.iq_sync_flag=0
             
             self.iq_header.sync_state = sync_state
-            
+
             # -> Send IQ frame toward the iq server
             header_uint8 = np.frombuffer(self.iq_header.encode_header(), dtype=np.uint8)
             if active_buffer_index_iq !=3 :

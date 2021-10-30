@@ -264,7 +264,8 @@ int main(int argc, char* argv[])
             switch(active_buff_ind)
             { 
                 case 0:
-                case 1:                
+                case 1:
+                    active_out_buffer_size=0;
                     frame_ptr = output_sm_buff->shm_ptr[active_buff_ind];                        
                     
                     iq_header->cpi_length = 0;

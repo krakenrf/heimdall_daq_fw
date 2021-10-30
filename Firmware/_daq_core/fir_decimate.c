@@ -228,7 +228,7 @@ int main(int argc, char **argv)
         if (active_buff_ind_in == TERMINATE) {exit_flag = TERMINATE; break;}
         iq_header = (struct iq_header_struct*) input_sm_buff->shm_ptr[active_buff_ind_in];
 		input_data_buffer = ((uint8_t *) input_sm_buff->shm_ptr[active_buff_ind_in] )+ IQ_HEADER_LENGTH/sizeof(uint8_t);
-        CHK_SYNC_WORD(check_sync_word(iq_header));        
+        CHK_SYNC_WORD(check_sync_word(iq_header));
         
         if (expected_frame_index == -1)
         {expected_frame_index = iq_header->daq_block_index;}
