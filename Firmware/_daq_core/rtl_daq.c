@@ -89,6 +89,7 @@ static int ctr_channel_index;
 typedef struct
 {
     int num_ch;
+    char* en_bias_tee_str;    
     int daq_buffer_size;    
     int sample_rate;
     int center_freq;
@@ -111,52 +112,31 @@ static int handler(void* conf_struct, const char* section, const char* name,
 
     #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
     if (MATCH("hw", "num_ch")) 
-    {
-        pconfig->num_ch = atoi(value);
-    }
+        {pconfig->num_ch = atoi(value);}
     else if (MATCH("hw","name"))
-    {
-        pconfig->hw_name = strdup(value);
-    }
+        {pconfig->hw_name = strdup(value);}
     else if (MATCH("hw","unit_id"))
-    {
-        pconfig->hw_unit_id = atoi(value);
-    }
+        {pconfig->hw_unit_id = atoi(value);}
     else if (MATCH("hw", "ioo_type"))
-    {
-        pconfig->ioo_type = atoi(value);
-    }
+        {pconfig->ioo_type = atoi(value);}
+    else if (MATCH("hw","en_bias_tee"))
+        {pconfig->en_bias_tee_str = strdup(value);}
     else if (MATCH("daq", "daq_buffer_size"))
-    {
-        pconfig->daq_buffer_size = atoi(value);
-    } 
+        {pconfig->daq_buffer_size = atoi(value);} 
     else if (MATCH("daq", "sample_rate")) 
-    {
-        pconfig->sample_rate = atoi(value);
-    } 
+        {pconfig->sample_rate = atoi(value);} 
     else if (MATCH("daq", "center_freq")) 
-    {
-        pconfig->center_freq = atoi(value);
-    } 
+        {pconfig->center_freq = atoi(value);} 
     else if (MATCH("daq", "gain")) 
-    {
-        pconfig->gain = atoi(value);
-    } 
+        {pconfig->gain = atoi(value);} 
     else if (MATCH("daq", "en_noise_source_ctr")) 
-    {
-        pconfig->en_noise_source_ctr = atoi(value);
-    }
+        {pconfig->en_noise_source_ctr = atoi(value);}
     else if (MATCH("daq", "ctr_channel_serial_no"))
-    {
-        pconfig->ctr_channel_serial_no = atoi(value);
-    }
+        {pconfig->ctr_channel_serial_no = atoi(value);}
     else if (MATCH("daq", "log_level")) 
-    {
-        pconfig->log_level = atoi(value);
-    }
-    else {
-        return 0;  /* unknown section/name, error */
-    }
+        {pconfig->log_level = atoi(value);}
+    else 
+        {return 0;}  /* unknown section/name, error */
     return 0;
 }
 
@@ -408,11 +388,21 @@ int main( int argc, char** argv )
     {
         log_fatal("Configuration could not be loaded, exiting ..");
         return -1;
-    }    
+    }   
     buffer_size = config.daq_buffer_size*2;
     ch_no = config.num_ch;
+    
     log_set_level(config.log_level);
-
+    /* -> Parse bias tree config */
+    int en_bias_tee[ch_no];
+    char * en_bias_ch_i_str = strtok(config.en_bias_tee_str, ",");    
+    int i = 0;    
+    while( en_bias_ch_i_str != NULL ) 
+    {
+      en_bias_tee[i] = atoi(en_bias_ch_i_str);      
+      en_bias_ch_i_str = strtok(NULL, ",");
+      i++;      
+    }    
     log_info("Config succesfully loaded from %s",INI_FNAME);
     log_info("Channel number: %d", ch_no);
     log_info("Number of IQ samples per channel: %d", buffer_size/2);    
@@ -518,6 +508,18 @@ int main( int argc, char** argv )
     	}
     	rtl_rec->dev = dev;
     }
+    /*-> Enable/Disable bias tees*/
+    for(int m=0;m<ch_no;m++)
+    {
+        if(en_bias_tee[m])
+            {log_info("Bias tee on channel: %d is enabled",m);}
+        else
+            {log_info("Bias tee on channel: %d is disabled",m);}
+
+        struct rtl_rec_struct *rtl_rec = &rtl_receivers[ctr_channel_index];                        
+        rtlsdr_set_gpio(rtl_rec->dev, en_bias_tee[m] , m+1);
+    }
+
     pthread_barrier_init(&rtl_init_barrier, NULL, ch_no);
     /* Spawn reader threads */
     for(int i=0; i<ch_no; i++)
