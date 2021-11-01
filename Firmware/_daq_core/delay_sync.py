@@ -298,7 +298,7 @@ class delaySynchronizer():
         elif self.amplitude_cal_mode == "disabled":            
             iq_diffs        = np.array(list(map(lambda m: iq_diffs[m]/np.abs(iq_diffs[m]), np.arange(self.M))))
     
-            return iq_diffs
+            return np.array(dyn_ranges), iq_diffs
 
         for m in range(self.M):
             self.logger.debug("Channel: {:d}, Peak dyn. range: {:.2f}[min: {:.2f}], Amp.:{:.2f}, Phase:{:.2f} ".format(\
