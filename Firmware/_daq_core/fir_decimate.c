@@ -183,7 +183,7 @@ int main(int argc, char **argv)
         CHK_MALLOC(fir_state_vectors)
 
         ne10_fir_decimate_instance_f32_t * fir_cfgs = malloc(ch_no*2*sizeof(ne10_fir_decimate_instance_f32_t));
-        ne10_uint8_t R = dec;
+        ne10_uint16_t R = dec;
         ne10_uint32_t fir_blocksize=config.cpi_size*R;
 
         for(int m=0;m<ch_no*2;m++)
