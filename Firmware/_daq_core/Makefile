@@ -2,6 +2,8 @@
 # Author: Tamás Pető, Sándor Bajusz
 CC=gcc
 CFLAGS=-Wall -std=gnu99 -march=native -O2
+# Optimized C-flags for Pi 4
+# CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mtune=cortex-a72 -Ofast
 RM= rm -f
 
 HOST_ARCH := $(shell uname -m)
