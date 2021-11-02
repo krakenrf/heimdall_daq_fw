@@ -376,7 +376,7 @@ typedef struct
  */
 typedef struct
 {
-    ne10_uint8_t  M;            /**< Decimation Factor. */
+    ne10_uint16_t  M;            /**< Decimation Factor. */
     ne10_uint16_t numTaps;      /**< Length of the filter. */
     ne10_float32_t    *pCoeffs;      /**< Points to the coefficient array. The array is of length numTaps.*/
     ne10_float32_t    *pState;       /**< Points to the state variable array. The array is of length numTaps+maxBlockSize-1. */
