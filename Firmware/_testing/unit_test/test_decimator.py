@@ -210,11 +210,11 @@ class TesterDecimatorModule(unittest.TestCase):
     def test_case_5_10(self):
         logging.info("-> Starting Test Case [5_11] : Transfer function test")
         # -> Assume <-        
-        decimation_ratio = 5
-        N = 2**17
-        N_cal = 2**15
+        decimation_ratio = 383
+        N = 2**10
+        N_cal = 2**13
         fir_bw = 0.9
-        K = 20
+        K = 500
         win='hann'
         self._write_config_file(N=N, R=decimation_ratio, N_daq=N, N_cal=N_cal, fir_bw=fir_bw, K=K, win=win, reset=0)
         # -> Action <-

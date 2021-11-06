@@ -38,7 +38,7 @@ decimate_x86: sh_mem_util.c iq_header.c log.c ini.c fir_decimate.c
 
 decimate_arm_neon: sh_mem_util.c iq_header.c log.c ini.c fir_decimate.c
 	$(CC) $(CFLAGS) -DARM_NEON -c fir_decimate.c -o fir_decimate.o
-	$(CC) $(CFLAGS) fir_decimate.o sh_mem_util.o log.o ini.o iq_header.o -o decimate.out -lrt -lm -L. -lNE10
+	$(CC) $(CFLAGS) fir_decimate.o sh_mem_util.o log.o ini.o iq_header.o -o decimate.out -lrt -L. -lNE10 -lm
 
 iq_server: sh_mem_util.c iq_header.c log.c ini.c iq_server.c
 	$(CC) $(CFLAGS) sh_mem_util.o log.o ini.o iq_header.o -o iq_server.out iq_server.c -lrt
