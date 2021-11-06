@@ -38,6 +38,8 @@ class HWC():
     
     def __init__(self):                 
         
+        logging.basicConfig(level=10)
+        self.logger = logging.getLogger(__name__)
         self.log_level=0 # Set from the ini file        
         self.rcf_name = "_data_control/rec_control_fifo"
         self.sqcf_name = "_data_control/squelch_control_fifo"
@@ -89,9 +91,8 @@ class HWC():
             Block sizes measured in bytes        
             1 IQ sample consist of 2 32bit float number
         """
-        # Initialize logger        
-        logging.basicConfig(level=self.log_level)
-        self.logger = logging.getLogger(__name__)           
+        # Configure logger                        
+        self.logger.setLevel(self.log_level)
 
         # Control interface server
         self.ctr_iface_server = CtrIfaceServer(self.M)
@@ -172,6 +173,8 @@ class HWC():
             logging.warning("Gain values leaved in default state")
             self.gains=[0]*self.M
             self.last_gains=[0]*self.M
+            logging.warning("GAINS: {0}".format(self.gains))
+            logging.warning("Last GAINS: {0}".format(self.last_gains))
         else:
             self.gains=[]
             self.last_gains=[]

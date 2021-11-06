@@ -80,24 +80,14 @@ static int handler(void* conf_struct, const char* section, const char* name, con
 
     #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
     if (MATCH("hw", "num_ch")) 
-    {
-        pconfig->num_ch = atoi(value);
-    } 
+        {pconfig->num_ch = atoi(value);} 
     else if (MATCH("pre_processing", "cpi_size")) 
-    {
-        pconfig->cpi_size = atoi(value);
-    }
+        {pconfig->cpi_size = atoi(value);}
     else if (MATCH("squelch", "amplitude_threshold")) 
-    {
-        pconfig->squelch_threshold = atof(value);
-    }
+        {pconfig->squelch_threshold = atof(value);}
     else if (MATCH("daq", "log_level")) 
-    {
-        pconfig->log_level = atoi(value);
-    }
-    else {
-        return 0;  /* unknown section/name, error */
-    }
+        {pconfig->log_level = atoi(value);}
+    else {return 0;}  /* unknown section/name, error */
     return 0;
 }
 void * fifo_read_tf(void* arg) 
@@ -122,8 +112,9 @@ void * fifo_read_tf(void* arg)
     /* Opening control FIFO */
     FILE * fd = fopen(SQC_FNAME, "r");    
     if(fd!=0)
-        log_info("Control FIFO opened succesfully");
-    else{
+        {log_info("Control FIFO opened succesfully");}
+    else
+    {
         log_fatal("Control FIFO open error"); 
         exit_flag = 1;
     }

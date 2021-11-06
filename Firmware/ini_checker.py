@@ -228,7 +228,7 @@ def check_ini(parameters, en_hw_check=True):
     if daq_buffer_size != -1 and cpi_size != -1 and decimation_ratio !=-1:
         if (cpi_size*decimation_ratio) < daq_buffer_size:
             error_list.append("The duration of the CPI size (including decimation) must be larger than the duration of the DAQ buffer size")
-
+    
     """
     --------------------------------
         | Calibration | Parameter group
@@ -243,9 +243,10 @@ def check_ini(parameters, en_hw_check=True):
         corr_size = int(cal_params['corr_size'])
         if corr_size < 1:
             error_list.append("Calibration correlation size must be a positive integer. Currently it is: '{0}' ".format(cal_params['corr_size']))
+        """ Obsolete from ksdr82
         if corr_size > cpi_size:
             error_list.append("Calibration correlation size must greater than the CPI size")
-
+        """
     if not chk_int(cal_params['std_ch_ind']):
         error_list.append("Standard channel index must be a non negative integer. Currently it is: '{0}' ".format(cal_params['std_ch_ind']))
     else:
