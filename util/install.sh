@@ -34,8 +34,8 @@ elif [ "$HOST_ARCH" = "armv7l" ]; then
     cd build
     export NE10_LINUX_TARGET_ARCH=armv7 
     cmake -DGNULINUX_PLATFORM=ON ..     
-    make    
-    cp libNE10.a ../../heimdall_daq_fw/Firmware/_daq_core
+    make
+    cp modules/libNE10.a ../../heimdall_daq_fw/Firmware/_daq_core
     cd ..
     cd ..    
 else
