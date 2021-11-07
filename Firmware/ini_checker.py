@@ -67,6 +67,7 @@ def get_serials():
 
 # Initialize logger
 logging.basicConfig(level=logging.ERROR)
+valid_bias_enable_flag = [0, 1]
 valid_gains = [0, 9, 14, 27, 37, 77, 87, 125, 144, 157, 166, 197, 207, 229, 254, 280, 297, 328, 338, 364, 372, 386, 402, 421, 434, 439, 445, 480, 496]
 valid_fir_windows = ['boxcar', 'triang', 'blackman', 'hamming', 'hann', 'bartlett', 'flattop', 'parzen' , 'bohman', 'blackmanharris', 'nuttall', 'barthann'] 
 # See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.get_window.html#scipy.signal.get_window
@@ -99,6 +100,17 @@ def check_ini(parameters, en_hw_check=True):
             error_list.append("Number of channels must be a non zero positive number. Currently it is: '{0}' ".format(hw_params['num_ch']))
         if en_hw_check and int(hw_params['num_ch']) > device_count:
             error_list.append("Only {0} receiver channels are available, but {1} is requested!".format(device_count, hw_params['num_ch']))
+
+    bias_init_str = hw_params['en_bias_tee']
+    bias_init_str = bias_init_str.split(',')
+    for bias_en_str in bias_init_str:
+        if not chk_int(bias_en_str):
+            error_list.append("Bias tee init value must be a list of integers, Currently it is: '{0}' ".format(bias_en_str))
+        else:
+            if not int(bias_en_str) in valid_bias_enable_flag:
+                error_list.append("Bias tee init values should be one of the followings:{0}. Currently one of it is: '{1}' ".format(valid_bias_enable_flag,int(bias_en_str)))
+    if en_hw_check and len(bias_init_str) != device_count:
+        error_list.append("The number of specified bias tee init values does not much with availble channels. Set:{0}, available:{1}".format(len(bias_init_str), device_count))
 
     """
     --------------------------------
