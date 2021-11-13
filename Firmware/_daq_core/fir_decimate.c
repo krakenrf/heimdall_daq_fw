@@ -179,7 +179,7 @@ int main(int argc, char **argv)
         ne10_float32_t* fir_coeffs  = malloc(tap_size*sizeof(ne10_float32_t));
         CHK_MALLOC(fir_coeffs)
 
-        ne10_float32_t** fir_state_vectors= malloc(ch_no*2*sizeof(ne10_float32_t));
+        ne10_float32_t** fir_state_vectors= malloc(ch_no*2*sizeof(ne10_float32_t*));
         CHK_MALLOC(fir_state_vectors)
 
         ne10_fir_decimate_instance_f32_t * fir_cfgs = malloc(ch_no*2*sizeof(ne10_fir_decimate_instance_f32_t));
