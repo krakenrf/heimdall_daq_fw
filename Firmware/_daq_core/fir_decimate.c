@@ -42,7 +42,7 @@
 #include <kfr/capi.h>
 #endif
 
-#define DC 128.0
+#define DC 127.5
 #define INI_FNAME "daq_chain_config.ini"
 #define FIR_COEFF "_data_control/fir_coeffs.txt"
 #define FATAL_ERR(l) log_fatal(l); return -1;
@@ -283,8 +283,8 @@ int main(int argc, char **argv)
                             //De-interleaving input data
                             for(int sample_index=0; sample_index<iq_header->cpi_length*dec; sample_index++)
                             {
-                                fir_input_buffer_i[sample_index] = (input_data_buffer[2*sample_index]-DC)/128;   // I
-                                fir_input_buffer_q[sample_index] = (input_data_buffer[2*sample_index+1]-DC)/128; // Q
+                                fir_input_buffer_i[sample_index] = (input_data_buffer[2*sample_index]-DC)/DC;   // I
+                                fir_input_buffer_q[sample_index] = (input_data_buffer[2*sample_index+1]-DC)/DC; // Q
                             }
                             // Perform filtering
                             #ifdef ARM_NEON
@@ -331,8 +331,8 @@ int main(int argc, char **argv)
                     /* Convert cint8 to cfloat32 without filtering and decimation on cal type frames*/
                     for(int sample_index=0; sample_index<iq_header->cpi_length*iq_header->active_ant_chs; sample_index++)
                         {
-                            output_data_buffer[2*sample_index]   = (float)(input_data_buffer[2*sample_index]-DC)/128;   // I
-                            output_data_buffer[2*sample_index+1] = (float)(input_data_buffer[2*sample_index+1]-DC)/128; // Q
+                            output_data_buffer[2*sample_index]   = (float)(input_data_buffer[2*sample_index]-DC)/DC;   // I
+                            output_data_buffer[2*sample_index+1] = (float)(input_data_buffer[2*sample_index+1]-DC)/DC; // Q
 
                         }
 
