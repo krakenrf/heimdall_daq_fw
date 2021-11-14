@@ -650,7 +650,7 @@ class TesterDecimatorModule(unittest.TestCase):
     def check_ramp(self, file_name, frame_count):
         iq_header = IQHeader()
         ramp_max = 29
-        DC = 128
+        DC = 127.5
         block_index = 0
         time_index = 0
         with open(file_name, "rb") as file_descr:
@@ -686,7 +686,7 @@ class TesterDecimatorModule(unittest.TestCase):
                     iq_cf64 = iq_cf64.copy()
 
                     # Revert normalization and DC compensation made in the decimator
-                    iq_cf64 = iq_cf64*128 + 128*(1+1j)
+                    iq_cf64 = iq_cf64*DC + DC*(1+1j)
 
                     raw_sig = np.arange(time_index, time_index + iq_header.cpi_length,1, dtype=np.uint32)%ramp_max
                     for m in range(iq_header.active_ant_chs):
