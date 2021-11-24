@@ -543,7 +543,7 @@ int main( int argc, char** argv )
          * All the reader threads should reach the same index before we could send out the data,
          * and we could coninue the acquisition.
         */        
-        pthread_cond_wait(&buff_ind_cond, &buff_ind_mutex);
+        pthread_cond_wait(&buff_ind_cond, &buff_ind_mutex); // TODO: Check- should we acquire mutex first?
         data_ready = 1;
         for(int i=0; i<ch_no; i++)
         {
