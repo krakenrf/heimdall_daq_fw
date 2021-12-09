@@ -7,7 +7,7 @@
 #   Authors: Tamas Peto, Carl Laufer
 
 # Check config file
-res=$(python3 ini_checker.py 2>&1)
+#res=$(python3 ini_checker.py 2>&1) #comment out ini checker for now since it is very slow
 if test -z "$res" 
 then
       echo -e "\e[92mConfig file check [OK]\e[39m"
