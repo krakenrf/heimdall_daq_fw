@@ -3,7 +3,9 @@
 CC=gcc
 CFLAGS=-Wall -std=gnu99 -march=native -O2
 # Optimized C-flags for Pi 4
-#CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mfloat-abi=hard -mfpu=neon-fp-armv8 -mtune=cortex-a72 -Ofast
+#CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
+# Uncomment if you installed GCC 11.2
+#CC=/usr/local/bin/gcc
 RM= rm -f
 
 HOST_ARCH := $(shell uname -m)
