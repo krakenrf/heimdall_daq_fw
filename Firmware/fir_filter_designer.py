@@ -15,7 +15,7 @@
 import sys
 from scipy import signal
 import numpy as np
-import plotly.graph_objects as go 
+#import plotly.graph_objects as go 
 from configparser import ConfigParser
 
 parser = ConfigParser()
@@ -54,6 +54,8 @@ if cut_off < 1:
 else:
 	b=np.array([1])
 
+# Uncomment for debugging
+"""
 # Plot transfer function
 w, h = signal.freqz(b=b, a=1, worN=2**16, whole=True)
 h+= 10**-10 # To avoid operations with zero
@@ -79,3 +81,4 @@ print("FIR filter ready")
 print("Transfer funcfion is exported to : ", transfer_fname)
 print("Coefficients are exported to: ",coeffs_fname)
 exit(0)
+"""
