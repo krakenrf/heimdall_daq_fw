@@ -73,7 +73,7 @@ fig.update_layout(
             yaxis_title = "Amplitude[dB]",
             font=dict(size=18),
             hovermode='x')
-
+"""
 fig.write_html(transfer_fname)
 
 np.savetxt(coeffs_fname, b)
@@ -81,4 +81,3 @@ print("FIR filter ready")
 print("Transfer funcfion is exported to : ", transfer_fname)
 print("Coefficients are exported to: ",coeffs_fname)
 exit(0)
-"""
