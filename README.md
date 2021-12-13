@@ -5,8 +5,7 @@ Coherent data acquisition signal processing chain for multichannel SDRs
 
 1. Install build dependencies
 ```bash
-sudo apt install cmake
-sudo apt install libusb-1.0-0-dev
+sudo apt install build-essential git cmake libusb-1.0-0-dev lsof
 ```
    
 2. Install RTL-SDR kernel driver
