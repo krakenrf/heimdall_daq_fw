@@ -11,7 +11,7 @@ Coherent data acquisition signal processing chain for multichannel SDRs
    
 2. Install RTl-SDR kernel driver
 ```bash    
-    git clone https://github.com/librtlsdr/librtlsdr
+    git clone https://github.com/krakenrf/librtlsdr
     cd rtl-sdr-kerberos
     mkdir build
     cd build
