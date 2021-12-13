@@ -73,7 +73,8 @@ sudo ldconfig
 4. If required install Python3.8 (see appendix). Most newer Raspbian builds, or modern Linux OS's will already have Python 3.8 or newer pre-installed so this step can be skipped.
 
 5. Install Miniconda
-The instructions below are so aarch64 ARM systems. If you're install to another system, please download the appropriate miniconda installer.
+
+The instructions below are for 64-bit aarch64 ARM systems like the Pi 4. If you're installing to an x86 system, please download the appropriate miniconda installer for your system which can be found at https://docs.conda.io/en/latest/miniconda.html. For x86 64-Bit systems you will most likely want https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
 ``` bash
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
