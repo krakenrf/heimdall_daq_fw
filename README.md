@@ -4,7 +4,7 @@ Coherent data acquisition signal processing chain for multichannel SDRs.
 Tested on the Raspberry Pi 4. Should work with all models, 2GB, 4GB and 8GB.
 Should also be compatible with other systems including x86, but a system with at least 4-CPU cores is probably required.
 
-### Installation:
+## Installation
 
 This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit Beta 2021-10-30-raspios-bullseye-arm64-lite
 
