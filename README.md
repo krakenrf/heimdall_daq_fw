@@ -9,7 +9,7 @@ sudo apt install cmake
 sudo apt install libusb-1.0-0-dev
 ```
    
-2. Install RTl-SDR kernel driver
+2. Install RTL-SDR kernel driver
 ```bash    
 git clone https://github.com/krakenrf/librtlsdr
 cd rtl-sdr-kerberos
