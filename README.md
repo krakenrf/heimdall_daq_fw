@@ -29,6 +29,8 @@ Coherent data acquisition signal processing chain for multichannel SDRs
 4. [On ARM platform only]  Install the Ne10 library for ARM devices
     
     *More info on the Ne10 building: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
+    
+For 32-bit ARM systems:
 ```bash
     git clone https://github.com/krakenrf/Ne10
     cd Ne10
