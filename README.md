@@ -30,7 +30,7 @@ Coherent data acquisition signal processing chain for multichannel SDRs
     
     *More info on the Ne10 building: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
 ```bash
-    git clone https://github.com/projectNe10/Ne10
+    git clone https://github.com/krakenrf/Ne10
     cd Ne10
     mkdir build
     cd build
@@ -39,6 +39,17 @@ Coherent data acquisition signal processing chain for multichannel SDRs
     make
  ```
  *copy "NE10_PATH/build/modules/libNE10.a" to "Firmware/_daq_core/'*
+ 
+ For 64-bit Pi 4:
+ ```bash
+    git clone https://github.com/krakenrf/Ne10
+    cd Ne10
+    mkdir build
+    cd build
+    cmake -DNE10_LINUX_TARGET_ARCH=aarch64 -DGNULINUX_PLATFORM=ON -DCMAKE_C_FLAGS="-mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations" ..
+    make
+ ```
+ 
  
 4. [On X86 platform only]. Install the KFR library 
     - Config compiler
