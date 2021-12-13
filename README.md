@@ -6,7 +6,7 @@ Should also be compatible with other systems including x86, but a system with at
 
 ## Installation
 
-This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit Beta 2021-10-30-raspios-bullseye-arm64-lite
+This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit Beta 2021-10-30-raspios-bullseye-arm64-lite.
 
 We recommend starting with a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2021-11-08/
 
