@@ -350,13 +350,21 @@ void *read_thread_entry(void *arg)
         }
         
         /*Set all gpios into the default off state*/
-        rtlsdr_set_gpio(dev, 0, 0);
-        rtlsdr_set_gpio(dev, 0, 1);
-        rtlsdr_set_gpio(dev, 0, 2);
-        rtlsdr_set_gpio(dev, 0, 3);
-        rtlsdr_set_gpio(dev, 0, 4);
-        rtlsdr_set_gpio(dev, 0, 5);
-        rtlsdr_set_gpio(dev, 0, 6);
+        //rtlsdr_set_gpio(dev, 0, 0);
+        //rtlsdr_set_gpio(dev, 0, 1);
+        //rtlsdr_set_gpio(dev, 0, 2);
+        //rtlsdr_set_gpio(dev, 0, 3);
+        //rtlsdr_set_gpio(dev, 0, 4);
+        //rtlsdr_set_gpio(dev, 0, 5);
+        //rtlsdr_set_gpio(dev, 0, 6);
+	    
+	rtlsdr_set_bias_tee_gpio(dev, 0, 0);
+        rtlsdr_set_bias_tee_gpio(dev, 1, 0);
+        rtlsdr_set_bias_tee_gpio(dev, 2, 0);
+        rtlsdr_set_bias_tee_gpio(dev, 3, 0);
+        rtlsdr_set_bias_tee_gpio(dev, 4, 0);
+        rtlsdr_set_bias_tee_gpio(dev, 5, 0);
+        rtlsdr_set_bias_tee_gpio(dev, 6, 0);
 
         /* Reset buffers */
         if (rtlsdr_reset_buffer(dev) !=0)
@@ -516,8 +524,9 @@ int main( int argc, char** argv )
         else
             {log_info("Bias tee on channel: %d is disabled",m);}
 
-        struct rtl_rec_struct *rtl_rec = &rtl_receivers[ctr_channel_index];                        
-        rtlsdr_set_gpio(rtl_rec->dev, en_bias_tee[m] , m+1);
+        struct rtl_rec_struct *rtl_rec = &rtl_receivers[ctr_channel_index];    
+	rtlsdr_set_bias_tee_gpio(rtl_rec->dev, m+1, en_bias_tee[m]);
+        //rtlsdr_set_gpio(rtl_rec->dev, en_bias_tee[m] , m+1);
     }
 
     pthread_barrier_init(&rtl_init_barrier, NULL, ch_no);
@@ -692,11 +701,13 @@ int main( int argc, char** argv )
             {
                 rtl_rec = &rtl_receivers[ctr_channel_index];                
                 if (noise_source_state == 1){
-                    rtlsdr_set_gpio(rtl_rec->dev, 1, 0);
+	            rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
+                    //rtlsdr_set_gpio(rtl_rec->dev, 1, 0);
                     log_info("Noise source turned on ");
                 }
                 else if (noise_source_state == 0){
-                    rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
+		    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 0);
+                    //rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
                     log_info("Noise source turned off ");
                 }
                 /*
