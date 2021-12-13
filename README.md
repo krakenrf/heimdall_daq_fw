@@ -1,13 +1,16 @@
 # HeIMDALL DAQ Firmware
-Coherent data acquisition signal processing chain for multichannel SDRs
+Coherent data acquisition signal processing chain for multichannel SDRs.
+
+Tested on the Raspberry Pi 4. Should work with all models, 2GB, 4GB and 8GB.
+Should also be compatible with other systems including x86, but a system with at least 4-CPU cores is probably required.
 
 ### Installation:
 
 This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit Beta 2021-10-30-raspios-bullseye-arm64-lite
 
-Start with the a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2021-11-08/
+We recommend starting with a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2021-11-08/
 
-Burn to SD Card and login with pi/raspberry. Set up WiFi with wpa_supplicant, enable SSH and change the hostname to "krakensdr" if desired via raspi-config. For security, don't forget to change the default default the password too.
+Burn the image to an 8GB or larger SD Card and login with pi/raspberry. Set up WiFi with wpa_supplicant, enable SSH and change the hostname to "krakensdr" if desired via raspi-config. For security, don't forget to change the default default the password too.
 
 1. Install build dependencies
 ```bash
@@ -30,9 +33,14 @@ sudo ldconfig
 echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.conf
 ```
 
-3. [On ARM platform only]  Install the Ne10 library for ARM devices
+Restart the system
+``` bash
+sudo reboot
+```
+
+3. [ARM platforms]  Install the Ne10 DSP library for ARM devices
     
-*More info on the Ne10 building: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
+*More info on building Ne10: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
 
 For 64-bit Pi 4 (e.g. Running 64-Bit Raspbian OS)
 
@@ -56,7 +64,7 @@ cmake -DGNULINUX_PLATFORM=ON ..     # Run CMake to generate the build files
 make
  ```
  
-3. [On X86 platform only]. Install the KFR library 
+3. [X86 platforms] Install the KFR DSP library 
 - Config compiler
 ```bash
 sudo apt-get install clang
@@ -76,11 +84,11 @@ sudo ldconfig
 ```
 - In case of cmake error, remove the problematic section from the cmake file (kfr_capi install), make the library and copy the libbrary files (libkfr_capi.so) manually to /usr/local/lib
 
-4. If required install Python3.8 (see appendix). Most newer Raspbian builds, or modern Linux OS's will already have Python 3.8 or newer pre-installed so this step can be skipped.
+4. If required install Python 3.8 (see appendix for instructions). Most newer Raspbian builds, or modern Linux OS's will already have Python 3.8 or newer pre-installed so this step can be skipped.
 
 5. Install Miniconda
 
-The instructions below are for 64-bit aarch64 ARM systems like the Pi 4. If you're installing to an x86 system, please download the appropriate miniconda installer for your system which can be found at https://docs.conda.io/en/latest/miniconda.html. For x86 64-Bit systems you will most likely want https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+The instructions below are for 64-bit aarch64 ARM systems such as the Pi 4. If you're installing to an x86 system, please download the appropriate miniconda installer for your system which can be found at https://docs.conda.io/en/latest/miniconda.html. For x86 64-Bit systems you will most likely want https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
 ``` bash
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
@@ -101,7 +109,7 @@ Restart the Pi, or logout, then log on again.
 sudo reboot
 ```
 
-7. Setup Miniconda Environment
+7. Setup the Miniconda Environment
 
 ``` bash
 conda create -n kraken python=3.9.7
@@ -127,27 +135,25 @@ git checkout development
 9. Build Heimdall C files
 
 First copy the libNe10.a library over to _daq_core
-
 ``` bash
-cd heimdall_daq_fw/Firmware/_daq_core/
+cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
 cp ~/Ne10/build/modules/libNE10.a .
 ```
 
-Next if you are on a Pi 4, we recommend editing the Makefile to enable the optimized Pi 4 build.
-
+Next if you are on a Pi 4, we recommend editing the Makefile to enable the optimized Pi 4 build. If it is a low performance system like a single board computer, you may with to research optimized C build flags. If it's a high performance system, optimizations are probably not required and the default can be left.
 ``` bash
 nano Makefile
 ```
 
-Uncomment the line below "# Optimized C-flags for Pi 4" by deleting the '#', and comment out the top CFLAGS line by adding a '#' at the start of that line. 
-Ctrl+X, Y to save and exit nano. It should look like this:
-
+Uncomment the line below "# Optimized C-flags for Pi 4" by deleting the '#', and comment out the top CFLAGS line by adding a '#' at the start of that line. It should look like this:
 ``` bash
 CC=gcc
-#CFLAGS=-Wall -std=gnu99 -march=native -O2
+# CFLAGS=-Wall -std=gnu99 -march=native -O2
 # Optimized C-flags for Pi 4
 CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
 ```
+
+Ctrl+X, Y to save and exit nano.
 
 Now build Heimdall
 
@@ -155,11 +161,11 @@ Now build Heimdall
 make
 ```
 
-### Next Steps:
+## Next Steps:
 
 Now you will probably want to install the direction of arrival DSP code found in https://github.com/krakenrf/krakensdr_doa.
 
-### Advanced:
+## Advanced Operation Notes:
 ### Test Run:
 The data acquisition chain can be started by simply running the 'daq_start_sm.sh' script in sudo mode.
 ```bash
