@@ -1,4 +1,6 @@
 #!/bin/bash
+#NOTE: Use for KerberosSDR Only
+
 echo "Initialzing EEPROM conectent and setting serial numbers"
 device_count=$(lsusb | grep "Realtek" | wc -l)
 echo "Found $device_count receivers"
