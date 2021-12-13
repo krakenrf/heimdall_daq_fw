@@ -3,8 +3,15 @@ Coherent data acquisition signal processing chain for multichannel SDRs
 
 ### Installation:
 
+This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit Beta 2021-10-30-raspios-bullseye-arm64-lite
+
+Start with the a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2021-11-08/
+
+Burn to SD Card and login with pi/raspberry. Set up WiFi with wpa_supplicant, enable SSH and change the hostname to "krakensdr" if desired via raspi-config. For security, don't forget to change the default default the password too.
+
 1. Install build dependencies
 ```bash
+sudo apt update
 sudo apt install build-essential git cmake libusb-1.0-0-dev lsof
 ```
    
