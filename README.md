@@ -97,7 +97,13 @@ chmod ug+x Miniforge3-Linux-aarch64.sh
 ```
 Read the license agreement and select ENTER or [yes] for all questions and wait a few minutes for the installation to complete.
 
-Once completed, disable the default base environment.
+Restart the Pi, or logout, then log on again.
+
+``` bash
+sudo reboot
+```
+
+Disable the default base environment.
 
 ``` bash
 conda config --set auto_activate_base false
