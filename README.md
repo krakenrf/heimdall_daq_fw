@@ -95,9 +95,9 @@ wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge
 chmod ug+x Miniforge3-Linux-aarch64.sh
 ./Miniforge3-Linux-aarch64.sh
 ```
-Read the license agreement and select ENTER or [yes] for all questions.
+Read the license agreement and select ENTER or [yes] for all questions and wait a few minutes for the installation to complete.
 
-Disable the base environment by default.
+Once completed, disable the default base environment.
 
 ``` bash
 conda config --set auto_activate_base false
