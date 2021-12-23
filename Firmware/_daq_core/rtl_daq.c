@@ -358,13 +358,13 @@ void *read_thread_entry(void *arg)
         //rtlsdr_set_gpio(dev, 0, 5);
         //rtlsdr_set_gpio(dev, 0, 6);
 	    
-	rtlsdr_set_bias_tee_gpio(dev, 0, 0);
-        rtlsdr_set_bias_tee_gpio(dev, 1, 0);
-        rtlsdr_set_bias_tee_gpio(dev, 2, 0);
-        rtlsdr_set_bias_tee_gpio(dev, 3, 0);
-        rtlsdr_set_bias_tee_gpio(dev, 4, 0);
-        rtlsdr_set_bias_tee_gpio(dev, 5, 0);
-        rtlsdr_set_bias_tee_gpio(dev, 6, 0);
+	//rtlsdr_set_bias_tee_gpio(dev, 0, 0);
+        //rtlsdr_set_bias_tee_gpio(dev, 1, 0);
+        //rtlsdr_set_bias_tee_gpio(dev, 2, 0);
+        //rtlsdr_set_bias_tee_gpio(dev, 3, 0);
+        //rtlsdr_set_bias_tee_gpio(dev, 4, 0);
+        //rtlsdr_set_bias_tee_gpio(dev, 5, 0);
+        //rtlsdr_set_bias_tee_gpio(dev, 6, 0);
 
         /* Reset buffers */
         if (rtlsdr_reset_buffer(dev) !=0)
