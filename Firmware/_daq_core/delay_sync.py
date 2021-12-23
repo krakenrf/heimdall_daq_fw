@@ -26,6 +26,7 @@ import sys
 from struct import pack
 import numpy as np
 import numpy.linalg as lin
+from scipy import fft
 from configparser import ConfigParser
 from iq_header import IQHeader
 from shmemIface import outShmemIface, inShmemIface
@@ -417,12 +418,12 @@ class delaySynchronizer():
                     # ->  Calculate correlation functions            
                     np_zeros = np.zeros(self.N_proc, dtype=np.complex64)
                     x_padd = np.concatenate([iq_samples[self.std_ch_ind, 0:self.N_proc], np_zeros])
-                    x_fft = np.fft.fft(x_padd)
+                    x_fft = fft.fft(x_padd, workers=4, overwrite_x=True)
                     
                     for m in self.channel_list:
                         y_padd = np.concatenate([np_zeros, iq_samples[m, 0:self.N_proc]])
-                        y_fft = np.fft.fft(y_padd)
-                        self.corr_functions[m,:] = np.abs(np.fft.ifft(x_fft.conj() * y_fft))**2
+                        y_fft = fft.fft(y_padd, workers=4, overwrite_x=True)
+                        self.corr_functions[m,:] = np.abs(fft.ifft(x_fft.conj() * y_fft, workers=4, overwrite_x=True))**2
                     # ->  Calculate sample delays, check dynamic range
                     # WARNING: This dynamic range checking assumes dirac like coorelation peak                    
                     for m in self.channel_list:
