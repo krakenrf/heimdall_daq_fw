@@ -259,7 +259,7 @@ int main(int argc, char **argv)
                 iq_header->sample_bit_depth = 32; // Complex float 32
                 iq_header->cpi_index = cpi_index;
 
-                if (iq_header->frame_type==FRAME_TYPE_DATA)
+                if (iq_header->frame_type==FRAME_TYPE_DATA && dec > 1)
                 {
                     iq_header->sampling_freq = iq_header->adc_sampling_freq / (uint64_t) dec;
                     iq_header->cpi_length = (uint32_t) iq_header->cpi_length/dec; 
@@ -323,7 +323,7 @@ int main(int argc, char **argv)
                         }                                     
                     }
                                 }
-                else if (iq_header->frame_type==FRAME_TYPE_CAL)
+                else if (iq_header->frame_type==FRAME_TYPE_CAL || dec == 1)
                 {
                     iq_header->sampling_freq = iq_header->adc_sampling_freq;
                     iq_header->cpi_length = (uint32_t) iq_header->cpi_length;
