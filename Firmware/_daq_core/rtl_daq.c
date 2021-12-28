@@ -48,6 +48,10 @@
 #include "rtl_daq.h"
 #include "iq_header.h"
 
+#ifdef USEPIGPIO
+#include <pigpio.h>
+#endif
+
 #define NUM_BUFF 8  // Number of buffers used in the circular, coherent read buffer
 #define CFN "_data_control/rec_control_fifo" // Receiver control FIFO name 
 #define ASYNC_BUF_NUMBER 12// Number of buffers used by the asynchronous read 
@@ -81,6 +85,9 @@ int center_freq_change_flag;
 static uint32_t ch_no, buffer_size;
 struct timeval frame_time_stamp;
 static int ctr_channel_index;
+
+int gpio_23 = 0;
+int gpio_24 = 0;
 
 /*
  * This structure stores the configuration parameters, 
@@ -390,6 +397,20 @@ int main( int argc, char** argv )
 {   
     log_set_level(LOG_TRACE);
     configuration config;
+
+    #ifdef USEPIGPIO
+    // PIGPIO
+    if (gpioInitialise() < 0)
+    {
+       log_fatal("pigpio init failed");
+       return -1;
+    }
+
+    gpioSetMode(23, PI_OUTPUT);
+    gpioSetMode(24, PI_OUTPUT);
+    gpioWrite(23, 1); /* enable antenna input 1 by default */
+    gpioWrite(24, 0); /* disable antenna input 2 */
+    #endif
 
     /* Set parameters from the config file*/
     if (ini_parse(INI_FNAME, handler, &config) < 0) 
@@ -702,6 +723,18 @@ int main( int argc, char** argv )
                 rtl_rec = &rtl_receivers[ctr_channel_index];                
                 if (noise_source_state == 1){
 	            rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
+
+                    // Use pigpio to set Pi GPIO for third party Kerberos CKOVAL switches
+                    #ifdef USEPIGPIO
+                    // Maintain GPIO state, as we may change to ant 2 in the Python code
+                    gpio_23 = gpioRead(23);
+                    gpio_24 = gpioRead(24);
+
+                    // Disconnect antennas
+                    gpioWrite(23, 0); /* enable antenna input 1 by default */
+                    gpioWrite(24, 0); /* disable antenna input 2 */
+                    #endif
+ 
                     //rtlsdr_set_gpio(rtl_rec->dev, 1, 0);
                     log_info("Noise source turned on ");
                 }
@@ -709,6 +742,12 @@ int main( int argc, char** argv )
 		    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 0);
                     //rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
                     log_info("Noise source turned off ");
+                    // Use pigpio to set Pi GPIO for third party Kerberos CKOVAL switches
+                    #ifdef USEPIGPIO
+                    // PIGPIO
+                    gpioWrite(23, gpio_23); /* enable antenna input 1 by default */
+                    gpioWrite(24, gpio_24); /* disable antenna input 2 */
+                    #endif
                 }
                 /*
                 Currently the bias tee (noise source) has to be enabled in all Kerberos SDRs
@@ -756,6 +795,12 @@ int main( int argc, char** argv )
     pthread_join(fifo_read_thread, NULL);
     log_info("All the resources are free now");
     free(rtl_receivers);
+
+    #ifdef USEPIGPIO
+    // PIGPIO
+    gpioTerminate();
+    #endif
+
     return 0;
 }
 
