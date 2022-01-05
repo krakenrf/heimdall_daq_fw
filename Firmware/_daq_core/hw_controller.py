@@ -375,7 +375,8 @@ class HWC():
 
         """
         if noise_source_state:
-            self.logger.info("Set gain values to perform calibration")  
+            self.logger.info("Set gain values to perform calibration") 
+            
             for m in range(self.M):
                 self.last_gains[m]=self.gains[m]
                 self.gains[m]=self.cal_gain_table[1,np.argmin(abs(self.cal_gain_table[0,:]-self.iq_header.rf_center_freq))]
@@ -461,7 +462,8 @@ class HWC():
                     self._control_squelch_thresold(0)
 
                     # TODO: Set initial ADPIS values here
-                    self.current_state = "STATE_GAIN_CTR_WAIT"
+                    #self.current_state = "STATE_GAIN_CTR_WAIT"
+                    self.current_state = "STATE_IQ_CAL" # CARL DISABLE gain tuning
                 #
                 #------------------------------------------>
                 #   
@@ -612,30 +614,30 @@ class CtrIfaceServer(threading.Thread):
             self.status=False
             return -1
 
-        while(True):    
+        while(True):
             # Wait for a connection
             self.logger.info("Waiting for new connection")
-            connection, client_address = self.ctr_iface_socket.accept()           
-            
-            try:                
-                self.logger.info("Conenction established ")                                
+            connection, client_address = self.ctr_iface_socket.accept()
+
+            try:
+                self.logger.info("Conenction established ")
 
                 # Main server loop
-                while True:      
-                    ctr_frame = connection.recv(128)          		
-                    if ctr_frame:                                                
+                while True:
+                    ctr_frame = connection.recv(128)
+                    if ctr_frame:
                         exit_flag = self.process_ctr_frame(ctr_frame)
                         if exit_flag:
-                            break                                                    
+                            break
                         # Send config success
-                        msg_bytes=("FNSD".encode()+bytearray(124))                                
+                        msg_bytes=("FNSD".encode()+bytearray(124))
                         connection.send(msg_bytes)
                     else:
                         self.logger.info("No more data from client, closing connection")
-                        break                    
+                        break
             finally:
-                # Clean up the connection                
-                connection.close()   
+                # Clean up the connection
+                connection.close()
 
     def process_ctr_frame(self, msg_bytes):
         """
