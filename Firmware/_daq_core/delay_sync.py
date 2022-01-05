@@ -146,6 +146,7 @@ class delaySynchronizer():
         self.max_sync_fails = parser.getint('calibration','maximum_sync_fails')
         self.amplitude_cal_mode = parser.get('calibration','amplitude_cal_mode')
         
+
         if parser.getint('calibration', 'en_frac_cal'):
             self.en_frac_cal = True
         else:
@@ -464,8 +465,12 @@ class delaySynchronizer():
                 #
                 elif self.current_state == "STATE_SYNC_WAIT":
                     sync_state = 3
-                    # Wait for at least 5 frames to update the previously sent delay values                
-                    if (self.iq_header.cpi_index > self.last_update_ind+5):
+                    # Wait for at least 10 frames to update the previously sent delay values
+                    # Carls Note: Seems we need at least 10 frames otherwise the initial calibration gets stuck??
+                    #print("CPI INDEX : " +str(self.iq_header.cpi_index))
+                    #print("LAST UPDATE INDEX : " +str(self.last_update_ind))
+
+                    if (self.iq_header.cpi_index > self.last_update_ind+10):
                         self.current_state = "STATE_SAMPLE_CAL"
                     
                 #
