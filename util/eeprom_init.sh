@@ -1,7 +1,7 @@
 #!/bin/bash
 #NOTE: Use for KerberosSDR Only
 
-echo "Initialzing EEPROM conectent and setting serial numbers"
+echo "This software will initialze KerberosSDR EEPROM content and set serial numbers"
 device_count=$(lsusb | grep "Realtek" | wc -l)
 echo "Found $device_count receivers"
 while true; do
@@ -15,7 +15,8 @@ done
 device_cntr=$((device_count-1))
 for i in $(eval echo "{0..$device_cntr}")
 do
-    read -p "Please turn off all channels excepting channel number:$i and press enter" dummy
+    dip_sw_count=$((i+1))
+    read -p "Please turn off all DIP switches except #$dip_sw_count and press enter" dummy
     # Check the number of online devices
     curr_device_count=$(lsusb | grep "Realtek" | wc -l)
     if test $curr_device_count -ne 1
