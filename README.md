@@ -17,6 +17,12 @@ Burn the image to an 8GB or larger SD Card and login with pi/raspberry. Set up W
 sudo apt update
 sudo apt install build-essential git cmake libusb-1.0-0-dev lsof
 ```
+
+If you are using a KerberosSDR with the third party switches by Corey Koval, or equivalent:
+
+```
+sudo apt install pigpio
+```   
    
 2. Install RTL-SDR kernel driver
 ```bash    
