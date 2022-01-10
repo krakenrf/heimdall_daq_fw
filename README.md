@@ -165,6 +165,8 @@ CC=gcc
 CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
 ```
 
+If you are using a KerberosSDR with third party switches by Corey Koval, or equivalent, make sure you uncomment the line `PIGPIO=-lpigpio -DUSEPIGPIO` as well. If not, leave it commented out.
+
 Ctrl+X, Y to save and exit nano.
 
 Now build Heimdall
