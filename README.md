@@ -86,20 +86,20 @@ cmake -DENABLE_CAPI_BUILD=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Rel
 make
 ```
 
-Copy the built library over to /usr/local/lib
+Copy the built library over to the system library folder:
 
 ```
 sudo cp ~/kfr/build/lib/* /usr/local/lib
 ```
 
-Copy the include file over too
+Copy the include file over to the system includes folder:
 
 ```
 sudo mkdir /usr/include/kfr
 sudo cp ~/kfr/include/kfr/capi.h /usr/include/kfr
 ```
 
-Run ldconfig to reset library cache
+Run ldconfig to reset library cache:
 
 ```
 sudo ldconfig
