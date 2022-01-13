@@ -84,8 +84,6 @@ mkdir build
 cd build
 cmake -DENABLE_CAPI_BUILD=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
 make
-sudo make install
-sudo ldconfig
 ```
 
 Copy the built library over to /usr/local/lib
