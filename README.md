@@ -105,9 +105,9 @@ Run ldconfig to reset library cache:
 sudo ldconfig
 ```
 
-4. Install Miniconda
+4. Install Miniforge
 
-The instructions below are for 64-bit aarch64 ARM systems such as the Pi 4. If you're installing to an x86 system, please download the appropriate miniconda installer for your system which can be found at https://github.com/conda-forge/miniforge. For x86 64-Bit systems you will most likely want https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+The instructions below are for 64-bit aarch64 ARM systems such as the Pi 4. If you're installing to an x86 system, please download the appropriate miniforge installer for your system which can be found at https://github.com/conda-forge/miniforge. For x86 64-Bit systems you will most likely want https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 
 ``` bash
 cd
