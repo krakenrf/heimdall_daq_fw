@@ -79,7 +79,7 @@ sudo update-alternatives --config c++
 *More info on the KFR library building: https://github.com/kfrlib/kfr/blob/master/README.md#usage*
 - Build and install the library
 ```bash
-git clone https://github.com/kfrlib/kfr
+git clone https://github.com/krakenrf/kfr
 mkdir build
 cd build
 cmake -DENABLE_CAPI_BUILD=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
@@ -87,13 +87,29 @@ make
 sudo make install
 sudo ldconfig
 ```
-- In case of cmake error, remove the problematic section from the cmake file (kfr_capi install), make the library and copy the libbrary files (libkfr_capi.so) manually to /usr/local/lib
 
-4. If required install Python 3.8 (see appendix for instructions). Most newer Raspbian builds, or modern Linux OS's will already have Python 3.8 or newer pre-installed so this step can be skipped.
+Copy the built library over to /usr/local/lib
 
-5. Install Miniconda
+```
+sudo cp ~/kfr/build/lib/* /usr/local/lib
+```
 
-The instructions below are for 64-bit aarch64 ARM systems such as the Pi 4. If you're installing to an x86 system, please download the appropriate miniconda installer for your system which can be found at https://docs.conda.io/en/latest/miniconda.html. For x86 64-Bit systems you will most likely want https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+Copy the include file over too
+
+```
+sudo mkdir /usr/include/kfr
+sudo cp ~/kfr/include/kfr/capi.h /usr/include/kfr
+```
+
+Run ldconfig to reset library cache
+
+```
+sudo ldconfig
+```
+
+4. Install Miniconda
+
+The instructions below are for 64-bit aarch64 ARM systems such as the Pi 4. If you're installing to an x86 system, please download the appropriate miniconda installer for your system which can be found at https://github.com/conda-forge/miniforge. For x86 64-Bit systems you will most likely want https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 
 ``` bash
 cd
