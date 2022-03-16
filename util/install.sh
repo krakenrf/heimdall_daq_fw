@@ -7,9 +7,9 @@ echo "6/1 Install build dependencies for the realtek driver"
 sudo apt install cmake
 sudo apt install libusb-1.0-0-dev
 echo "6/2 Build and install rtl-sdr driver"
-git clone https://github.com/rtlsdrblog/rtl-sdr-kerberos
+git clone https://github.com/krakenrf/librtlsdr
 
-cd rtl-sdr-kerberos
+cd librtlsdr
 mkdir build
 cd build
 cmake ../ -DINSTALL_UDEV_RULES=ON
