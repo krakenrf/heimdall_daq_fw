@@ -80,6 +80,7 @@ sudo update-alternatives --config c++
 - Build and install the library
 ```bash
 git clone https://github.com/krakenrf/kfr
+cd kfr
 mkdir build
 cd build
 cmake -DENABLE_CAPI_BUILD=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
