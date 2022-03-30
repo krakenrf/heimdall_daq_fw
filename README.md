@@ -161,7 +161,7 @@ git checkout development
 
 9. Build Heimdall C files
 
-First copy the libNe10.a library over to _daq_core
+First copy the libNe10.a library over to _daq_core (only if you are on an ARM device and using the NE10 library)
 ``` bash
 cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
 cp ~/Ne10/build/modules/libNE10.a .
