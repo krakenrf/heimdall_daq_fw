@@ -69,3 +69,7 @@
     sudo apt-get install libatlas-base-dev gfortran
     sudo python3 -m pip install scipy
     sudo python3 -m pip install plotly
+    sudo python3 -m pip install pyzmq
+
+#7  Install ZMQ
+    sudo apt install libzmq3-dev -y

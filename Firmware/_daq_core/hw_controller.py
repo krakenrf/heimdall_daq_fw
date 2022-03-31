@@ -274,7 +274,7 @@ class HWC():
         # Send gain list
         msg_byte_array = inter_module_messages.pack_msg_set_gain(self.module_identifier, gains)
         self.rtl_daq_socket.send(msg_byte_array)
-        reply = socket.recv()
+        reply = self.rtl_daq_socket.recv()
         self.logger.info(f"Received reply: {reply}")        
     def _tune_gains(self):
         """
@@ -355,7 +355,7 @@ class HWC():
         elif command == "FREQ":            
             msg_byte_array = inter_module_messages.pack_msg_rf_tune(self.module_identifier, params[0])
             self.rtl_daq_socket.send(msg_byte_array)
-            reply = socket.recv()
+            reply = self.rtl_daq_socket.recv()
             self.logger.info(f"Received reply: {reply}")
         elif command == "GAIN":
             try:
@@ -394,7 +394,7 @@ class HWC():
             self.logger.info("Enable noise source, [{:d}]".format(self.iq_header.cpi_index))
             msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, True)
             self.rtl_daq_socket.send(msg_byte_array)
-            reply = socket.recv()
+            reply = self.rtl_daq_socket.recv()
             self.logger.info(f"Received reply: {reply}")                 
             self.noise_source_state = True # Next state
             self.current_state = "STATE_NOISE_CTR_WAIT"
@@ -402,7 +402,7 @@ class HWC():
             self.logger.info("Disabling noise source [{:d}]".format(self.iq_header.cpi_index))
             msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, False)
             self.rtl_daq_socket.send(msg_byte_array)
-            reply = socket.recv()
+            reply = self.rtl_daq_socket.recv()
             self.logger.info(f"Received reply: {reply}")
             self.noise_source_state = False # Next state
 
@@ -473,7 +473,7 @@ class HWC():
                     # Disable internal noise source
                     msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, False)
                     self.rtl_daq_socket.send(msg_byte_array)
-                    reply = socket.recv()
+                    reply = self.rtl_daq_socket.recv()
                     self.logger.info(f"Received reply: {reply}")                    
 
                     # Disarm squelch module until calibration is finished

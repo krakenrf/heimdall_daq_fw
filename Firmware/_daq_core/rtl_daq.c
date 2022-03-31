@@ -249,11 +249,11 @@ void * fifo_read_tf(void* arg)
             //log_warn("Control noise source feature is implemented only for KerberosSDR/KrakenSDR");
             if(msg->parameters[0] == 0)
             {
-                log_info("Signal 'f': Turn off noise source");
+                log_info("Turn off noise source");
                 noise_source_state = 0;          
             }
             else{
-                log_info("Signal 'n': Turn on noise source");
+                log_info("Turn on noise source");
                 noise_source_state = 1;
             }            
         }

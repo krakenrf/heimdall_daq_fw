@@ -50,7 +50,12 @@ sudo python3 -m pip install configparser
 sudo apt-get install libatlas-base-dev gfortran
 sudo python3 -m pip install scipy
 sudo python3 -m pip install plotly
+sudo python3 -m pip install pyzmq
 
+sudo apt install libzmq3-dev -y
 echo "6/6 Build HeIMDALL DAQ Firmware"
 cd heimdall_daq_fw/Firmware/_daq_core
 make
+
+# TODO: Check installed versions:
+# Scipy: 1.8 or later
