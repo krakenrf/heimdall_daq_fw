@@ -75,6 +75,15 @@ void error_code_log(int exit_flag)
     }
 
 }
+
+// HeIMDALL DAQ inter-modul message structure
+struct hdaq_im_msg_struct { 
+    // Total length: 128 byte
+    uint8_t source_module_identifier;
+    char command_identifier;
+    uint8_t parameters[126];
+};
+
 struct rtl_rec_struct {
     int dev_ind, gain;
     rtlsdr_dev_t *dev;

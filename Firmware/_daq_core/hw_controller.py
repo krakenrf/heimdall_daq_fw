@@ -19,16 +19,21 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
-import logging
-import sys
-import numpy as np
+# Import built in modules
 from struct import pack, unpack
-import socket
 import threading
+import logging
+
+# Import third-party modules
+import numpy as np
+import socket
 from configparser import ConfigParser
+
+# Import HeIMDALL modules
 from iq_header import IQHeader
 from shmemIface import inShmemIface
+import zmq
+import inter_module_messages
 
 # Global: Used to communicate between the HWC module and the Control Interface server
 ctr_request = [] # This list stores the confiuration command and parameters [cmd, param 1, param 2, ..]
@@ -41,10 +46,9 @@ class HWC():
         logging.basicConfig(level=10)
         self.logger = logging.getLogger(__name__)
         self.log_level=0 # Set from the ini file        
-        self.rcf_name = "_data_control/rec_control_fifo"
+        self.module_identifier = 6 # Inter-module message module identifier
         self.sqcf_name = "_data_control/squelch_control_fifo"
         self.track_lock_ctr_fname = "_data_control/iq_track_lock"
-        self.rec_ctr_fifo = None
         self.squelch_ctr_fifo = None
         self.track_lock_ctr_fd = None
         self.in_shmem_iface = None
@@ -190,14 +194,19 @@ class HWC():
     def init(self):
         """
             Initializes the Hardware Controller module
+                - Opens inter-module communication sockets
                 - Opens the control FIFOs
                 - Initializes the shared memory data interface
                 - Initializes the DAC controller module (ADPIS control)
                 - Sets initial IQ values in the ADPIS
         """
+        # Open RTL-DAQ control socket
+        context = zmq.Context()        
+        self.rtl_daq_socket = context.socket(zmq.REQ)
+        self.rtl_daq_socket.connect("tcp://localhost:1130")
+
         # Open control FIFOs
-        try:
-            self.rec_ctr_fifo      = open(self.rcf_name, 'w+b', buffering=0)
+        try:            
             if self.en_squelch:
                 self.squelch_ctr_fifo  = open(self.sqcf_name, 'w+b', buffering=0)                
             self.track_lock_ctr_fd = open(self.track_lock_ctr_fname, 'r')
@@ -233,9 +242,6 @@ class HWC():
         """
             Close the communication and data interfaces that are opened during the start of the module
         """ 
-        if self.rec_ctr_fifo is not None:
-            self.rec_ctr_fifo.close()
-
         if self.en_squelch and (self.squelch_ctr_fifo is not None):
             self.squelch_ctr_fifo.close()
         
@@ -266,9 +272,10 @@ class HWC():
             gains.append(self.valid_gains[self.gains[m]])
             self.logger.info("Send Ch {:d} Gain: {:d} [{:d}]".format(m, int(gains[m]), self.iq_header.cpi_index))
         # Send gain list
-        self.rec_ctr_fifo.write('g'.encode('ascii'))
-        self.rec_ctr_fifo.write(pack("i"*self.M, *gains))
-    
+        msg_byte_array = inter_module_messages.pack_msg_set_gain(self.module_identifier, gains)
+        self.rtl_daq_socket.send(msg_byte_array)
+        reply = socket.recv()
+        self.logger.info(f"Received reply: {reply}")        
     def _tune_gains(self):
         """
             Performs IF gain tuning in order to maximaze the SINR in each channels by
@@ -345,9 +352,11 @@ class HWC():
         if command == "STHU":
             self.squelch_threshold = params[0]
             self._control_squelch_thresold(params[0])
-        elif command == "FREQ":
-            self.rec_ctr_fifo.write('c'.encode('ascii'))
-            self.rec_ctr_fifo.write(pack("I", int(params[0])))
+        elif command == "FREQ":            
+            msg_byte_array = inter_module_messages.pack_msg_rf_tune(self.module_identifier, params[0])
+            self.rtl_daq_socket.send(msg_byte_array)
+            reply = socket.recv()
+            self.logger.info(f"Received reply: {reply}")
         elif command == "GAIN":
             try:
                 if self.noise_source_state: # The noise source is turned on, we are storing only the gains
@@ -383,12 +392,18 @@ class HWC():
             self._change_gains()
 
             self.logger.info("Enable noise source, [{:d}]".format(self.iq_header.cpi_index))
-            self.rec_ctr_fifo.write('n'.encode('ascii'))
+            msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, True)
+            self.rtl_daq_socket.send(msg_byte_array)
+            reply = socket.recv()
+            self.logger.info(f"Received reply: {reply}")                 
             self.noise_source_state = True # Next state
             self.current_state = "STATE_NOISE_CTR_WAIT"
         else:
             self.logger.info("Disabling noise source [{:d}]".format(self.iq_header.cpi_index))
-            self.rec_ctr_fifo.write('f'.encode('ascii'))
+            msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, False)
+            self.rtl_daq_socket.send(msg_byte_array)
+            reply = socket.recv()
+            self.logger.info(f"Received reply: {reply}")
             self.noise_source_state = False # Next state
 
             self.logger.info("Restore gain values after calibration")            
@@ -456,7 +471,10 @@ class HWC():
                     self._change_gains()
 
                     # Disable internal noise source
-                    self.rec_ctr_fifo.write('f'.encode('ascii'))
+                    msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, False)
+                    self.rtl_daq_socket.send(msg_byte_array)
+                    reply = socket.recv()
+                    self.logger.info(f"Received reply: {reply}")                    
 
                     # Disarm squelch module until calibration is finished
                     self._control_squelch_thresold(0)
