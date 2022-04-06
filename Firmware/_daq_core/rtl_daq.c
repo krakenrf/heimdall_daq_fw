@@ -82,7 +82,7 @@ int last_noise_source_state = 0;
 int gain_change_flag;
 int *new_gains;
 float *new_fs_corrections;
-int fs_correction_flag;
+int fs_correction_flag, fs_reset_cntr;
 uint32_t new_center_freq;
 int center_freq_change_flag;
 static uint32_t ch_no, buffer_size;
@@ -239,8 +239,9 @@ void * fifo_read_tf(void* arg)
             float * parameters = (float * ) msg->parameters;
             for(int i=0;i<ch_no;i++){
                 new_fs_corrections[i] = parameters[i];
-                log_info("Channel: %d, fs ppm offset: %f",i, parameters[i]);
+                log_info("Channel: %d, fs ppm offset: %.8f",i, parameters[i]);
             }
+            fs_reset_cntr = 0;
             fs_correction_flag=1;
         }
         /* Noise source switch requests */
@@ -740,18 +741,30 @@ int main( int argc, char** argv )
             }
             /* Sampling frequency correction flag */
             if(fs_correction_flag==1)
-            {
-                for( int i=0; i<ch_no; i++)
+            {   
+                if(fs_reset_cntr == 0) /* Set corrections*/
                 {
-                    rtl_rec = &rtl_receivers[i];
-                    if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, new_fs_corrections[i]) !=0){
-                        log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));
+                    for( int i=0; i<ch_no; i++)
+                    {
+                        rtl_rec = &rtl_receivers[i];
+                        if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, new_fs_corrections[i]) !=0)
+                            {log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));}                        
+                        else{log_info("Sampling frequency correction set at ch: %d, value %.8f",i, new_fs_corrections[i]);}
                     }
-                    else{
-                        log_info("Sampling frequency correction set at ch: %d, value %f",i, new_fs_corrections[i]);
-                    }
+
                 }
-                fs_correction_flag=0;
+                else if(fs_reset_cntr == 1)
+                {
+                    for( int i=0; i<ch_no; i++) /* Tuning stage has been completed - reset corrections*/
+                    {
+                        rtl_rec = &rtl_receivers[i];
+                        if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, 0) !=0)
+                            {log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));}                        
+                        else{log_info("Sampling frequency correction set at ch: %d, value %.8f",i, 0);}
+                    }
+                    fs_correction_flag=0;
+                }
+                fs_reset_cntr ++;
             }      
             /* Noise source switch request */
             if (last_noise_source_state != noise_source_state && config.en_noise_source_ctr==1)

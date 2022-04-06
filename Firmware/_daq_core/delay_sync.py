@@ -20,17 +20,28 @@
 
    WARNING: Check the native size of the IQ header on the target device
 """
-
+# Import built-in modules
 import logging
 import sys
 from struct import pack
+from time import sleep
+
+# Import third-party modules
 import numpy as np
 import numpy.linalg as lin
 from scipy import fft
+from scipy.optimize import curve_fit
 from configparser import ConfigParser
+import zmq
+
+# Import HeIMDALL modules
 from iq_header import IQHeader
 from shmemIface import outShmemIface, inShmemIface
-from time import sleep
+import inter_module_messages
+
+# Linear curve definition for curve fitting
+def linear_func(x, a, b):
+    return a*x+b
 
 class delaySynchronizer():
     
@@ -40,6 +51,7 @@ class delaySynchronizer():
         self.logger = logging.getLogger(__name__)
 
         self.scf_name = "_data_control/sync_control_fifo"
+        self.module_identifier = 5 # Inter-module message module identifier
         self.sync_ctr_fifo = None
         self.in_shmem_iface = None
         self.in_shmem_iface_name = ""
@@ -72,7 +84,7 @@ class delaySynchronizer():
 
         self.phase_diff_tolerance = 3 # deg, maximum allowable phase difference
         self.amp_diff_tolerance = 0.5 # power ratio  maximum allowable amplitude difference, not dB!
-        
+        self.frac_delay_tolerance = 0.05 
         self.sync_failed_cntr = 0 # Counts the number of iq or sample sync fails in track mode
         self.max_sync_fails = 3 # Maximum number of synchronization fails before the sync track is lost
         self.sync_failed_cntr_total = 0
@@ -184,7 +196,11 @@ class delaySynchronizer():
                 :return: 0: All interfaces have been succesfully initialized
                         -1: Failed to initialize one the interfaces
         """ 
-        
+        # Open RTL-DAQ control socket
+        context = zmq.Context()        
+        self.rtl_daq_socket = context.socket(zmq.REQ)
+        self.rtl_daq_socket.connect("tcp://localhost:1130")
+
         # Open Sync-control FIFO        
         try:          
             self.sync_ctr_fifo = open(self.scf_name, 'w+b', buffering=0)            
@@ -217,7 +233,6 @@ class delaySynchronizer():
             self.logger.critical("Shared memory (HWC) initialization failed, exiting..")
             return -1
         return 0
-    
     def close_interfaces(self):
         """
             Close the communication and data interfaces that are opened during the start of the module
@@ -240,7 +255,6 @@ class delaySynchronizer():
             self.out_shmem_iface_hwc.destory_sm_buffer()  
             
         self.logger.info("Interfaces are closed")
-    
     def calc_sync(self, iq_samples):
         """
             This function calculates the synchronization status of the signal processing channels.
@@ -308,6 +322,49 @@ class delaySynchronizer():
                             np.rad2deg(np.angle(iq_diffs[m]))))  
 
         return np.array(dyn_ranges), iq_diffs
+    def estimate_frac_delays(self, iq):
+        """
+            Initialization
+        """
+        taus = []
+        N = iq.shape[1] # Number of samples
+        M = iq.shape[0] # Number of channels
+
+        block_size = 2**10
+        freq_scale = np.arange(-0.5,0.5,1/block_size)
+        fit_mask   = np.logical_and(freq_scale < 0.4, freq_scale > -0.4)
+            
+        phase_diff_w = np.zeros((M-1,block_size), dtype=complex)
+        """
+            Processing
+        """
+        # Estimate phase transfer
+        std_ch_w_block = np.zeros((N//block_size, block_size), dtype=complex)
+        #  - Transform standard channel to frequency domain block-wise
+        for block_index, block_start in enumerate(np.arange(0,N, block_size)):
+            std_ch_w_block[block_index,:] =  np.fft.fftshift(fft.fft(iq[0, block_start:block_start+block_size], workers=4, overwrite_x=False))
+
+        for m in range(M-1):
+            # Correct fix phase offset
+            phase_shift_w0 = np.average(iq[0]*iq[m+1].conj())
+            iq[m+1] *= phase_shift_w0
+            
+            for block_index, block_start in enumerate(np.arange(0,N, block_size)):
+                # Transform current block of the m-th channel to frequency domain
+                corr_ch_w_block  = np.fft.fftshift(fft.fft(iq[m+1, block_start:block_start+block_size], workers=4, overwrite_x=False))
+                # Calculate phase transfer with non-coherent integration
+                phase_diff_w[m,:] += std_ch_w_block[block_index,:]/corr_ch_w_block
+            phase_diff_w[m,:] /= (N//block_size) # Normalization
+            
+            angle_diff_w = np.angle(phase_diff_w[m,:]).real # Convert complex phasor to angle
+
+            
+                # Fit linear curve on to the estimated phase transfers and derive fractional delay
+            popt, pcov = curve_fit(linear_func, freq_scale[fit_mask], angle_diff_w[fit_mask])
+            taus.append(popt[0]/(2*np.pi))    
+        return taus
+        
+
     def start(self):
         """
             Start the main processing loop
@@ -459,7 +516,7 @@ class delaySynchronizer():
                         self.current_state = "STATE_SYNC_WAIT"    
                     
                     if sample_sync_flag:
-                        self.current_state = "STATE_IQ_CAL"
+                        self.current_state = "STATE_FRAC_SAMPLE_CAL"
                 #
                 #------------------------------------------>
                 #
@@ -472,7 +529,44 @@ class delaySynchronizer():
 
                     if (self.iq_header.cpi_index > self.last_update_ind+10):
                         self.current_state = "STATE_SAMPLE_CAL"
+                
+                #
+                #------------------------------------------>
+                #
+                elif self.current_state == "STATE_FRAC_SAMPLE_CAL":
+                    sync_state          = 3
+                    # TODO: Change sync state -> changes have to take effect in the HWC module as well
+                    # Calculate fractional delays
+                    taus = self.estimate_frac_delays(iq_samples[0:self.N_proc])
+                    self.logger.info(f"Fractional delays: {taus}")
                     
+                    # Determine and set tune values
+                    frac_delay_update_flag = False
+                    fs_ppm_offsets=[0]*self.M 
+                    
+                    for m in range(self.M-1):
+                        if abs(taus[m]) > self.frac_delay_tolerance:
+                            fs_ppm_offsets[m+1] = np.sign(taus[m])*0.0000001
+                            frac_delay_update_flag = True
+                    
+                    if frac_delay_update_flag:
+                        self.logger.info(f"Sending ppm offsets: {np.sign(fs_ppm_offsets)}")
+                        msg_byte_array = inter_module_messages.pack_msg_sample_freq_tune(self.module_identifier, fs_ppm_offsets)
+                        self.rtl_daq_socket.send(msg_byte_array)
+                        reply = self.rtl_daq_socket.recv()
+                        self.logger.info(f"Received reply: {reply}")
+                        self.last_update_ind=self.iq_header.cpi_index
+                        self.current_state = "STATE_FRAC_SYNC_WAIT"
+                    else:
+                        self.current_state = "STATE_IQ_CAL"
+                #
+                #------------------------------------------>
+                #
+                elif self.current_state == "STATE_FRAC_SYNC_WAIT":
+                    sync_state          = 3
+                    if (self.iq_header.cpi_index > self.last_update_ind+10):
+                        self.current_state = "STATE_FRAC_SAMPLE_CAL"
+                   
                 #
                 #------------------------------------------>
                 #
