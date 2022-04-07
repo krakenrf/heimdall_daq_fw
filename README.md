@@ -145,6 +145,7 @@ conda activate kraken
 conda install scipy
 conda install numba
 conda install configparser
+conda install pyzmq
 ```
 
 8. Create a root folder and clone the Heimdall DAQ Firmware
