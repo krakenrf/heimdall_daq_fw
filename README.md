@@ -16,6 +16,7 @@ Burn the image to an 8GB or larger SD Card and login with pi/raspberry. Set up W
 ```bash
 sudo apt update
 sudo apt install build-essential git cmake libusb-1.0-0-dev lsof
+sudo apt install libzmq3-dev
 ```
 
 If you are using a KerberosSDR with the third party switches by Corey Koval, or equivalent:
