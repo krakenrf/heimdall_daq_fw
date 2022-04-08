@@ -8,7 +8,7 @@ Should also be compatible with other systems including x86, but a system with at
 
 This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit Beta 2021-10-30-raspios-bullseye-arm64-lite.
 
-We recommend starting with a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/raspios_lite_arm64-2021-11-08/
+We recommend starting with a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/
 
 Burn the image to an 8GB or larger SD Card and login with pi/raspberry. Set up WiFi with wpa_supplicant, enable SSH and change the hostname to "krakensdr" if desired via raspi-config. For security, don't forget to change the default default the password too.
 
@@ -218,9 +218,9 @@ To perform unit testing on the daq chain, run the 'unit_test.sh' script. This wi
 The latest version of the documentation of the DAQ chain can be found in the Documenation folder in pdf format.
 
 
-### Appendix. [IF REQUIRED] Install Python 3.8 [Raspberry Pi4 only]
+### Appendix. [IF REQUIRED] Install Python 3.8
 
-Python 3.8 or newer is required due to its built-in shared memory library. Note that the latest Raspbian version now come preinstalled with Python 3.8 so this step is not required.
+Python 3.8 or newer is required due to its built-in shared memory library. Note that the latest Raspbian versions now come preinstalled with Python 3.8 so this step is not required.
 
 ```bash
 sudo apt-get update
