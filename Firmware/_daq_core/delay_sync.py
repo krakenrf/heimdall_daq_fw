@@ -24,6 +24,7 @@
 import logging
 import sys
 from struct import pack
+import time
 from time import sleep
 
 # Import third-party modules
@@ -33,6 +34,9 @@ from scipy import fft
 from scipy.optimize import curve_fit
 from configparser import ConfigParser
 import zmq
+
+import numba as nb
+from numba import jit, njit
 
 # Import HeIMDALL modules
 from iq_header import IQHeader
@@ -326,6 +330,8 @@ class delaySynchronizer():
         """
             Initialization
         """
+        start = time.time()
+
         taus = []
         N = iq.shape[1] # Number of samples
         M = iq.shape[0] # Number of channels
@@ -334,15 +340,15 @@ class delaySynchronizer():
         freq_scale = np.arange(-0.5,0.5,1/block_size)
         fit_mask   = np.logical_and(freq_scale < 0.4, freq_scale > -0.4)
             
-        phase_diff_w = np.zeros((M-1,block_size), dtype=complex)
+        phase_diff_w = np.zeros((M-1,block_size), dtype=np.complex64)
         """
             Processing
         """
         # Estimate phase transfer
-        std_ch_w_block = np.zeros((N//block_size, block_size), dtype=complex)
+        std_ch_w_block = np.zeros((N//block_size, block_size), dtype=np.complex64)
         #  - Transform standard channel to frequency domain block-wise
         for block_index, block_start in enumerate(np.arange(0,N, block_size)):
-            std_ch_w_block[block_index,:] =  np.fft.fftshift(fft.fft(iq[0, block_start:block_start+block_size], workers=4, overwrite_x=False))
+            std_ch_w_block[block_index,:] =  fft.fftshift(fft.fft(iq[0, block_start:block_start+block_size], workers=4, overwrite_x=False))
 
         for m in range(M-1):
             # Correct fix phase offset
@@ -351,7 +357,7 @@ class delaySynchronizer():
             
             for block_index, block_start in enumerate(np.arange(0,N, block_size)):
                 # Transform current block of the m-th channel to frequency domain
-                corr_ch_w_block  = np.fft.fftshift(fft.fft(iq[m+1, block_start:block_start+block_size], workers=4, overwrite_x=False))
+                corr_ch_w_block  = fft.fftshift(fft.fft(iq[m+1, block_start:block_start+block_size], workers=4, overwrite_x=True))
                 # Calculate phase transfer with non-coherent integration
                 phase_diff_w[m,:] += std_ch_w_block[block_index,:]/corr_ch_w_block
             phase_diff_w[m,:] /= (N//block_size) # Normalization
@@ -362,6 +368,9 @@ class delaySynchronizer():
                 # Fit linear curve on to the estimated phase transfers and derive fractional delay
             popt, pcov = curve_fit(linear_func, freq_scale[fit_mask], angle_diff_w[fit_mask])
             taus.append(popt[0]/(2*np.pi))    
+
+        end = time.time()
+        print("time taken: " + str((end-start)*1000))
         return taus
         
 
@@ -422,7 +431,7 @@ class delaySynchronizer():
             #############################################
             #  Delay Synchronizer Finite State Machine  #
             #############################################
-            
+
             if (self.iq_header.frame_type != IQHeader.FRAME_TYPE_DUMMY):  # Check frame type
 
                 # -> IQ Preprocessing <-
@@ -432,23 +441,29 @@ class delaySynchronizer():
                         iq_frame_buffer_out = (self.out_shmem_iface_iq.buffers[active_buffer_index_iq]).view(dtype=np.complex64)
                         # IQ header offset:1 sample -> 8 byte, 1024 byte length header -> 128 "sample"
                         iq_samples_out = iq_frame_buffer_out[128:128+self.iq_header.cpi_length*self.iq_header.active_ant_chs].reshape(self.iq_header.active_ant_chs, self.iq_header.cpi_length)
-                        
+
                         # Remove DC and apply IQ correction
-                        for m in range(self.M):
-                            iq_samples_out[m,:] = (iq_samples_in[m,:]-np.average(iq_samples_in[m,:]))*self.iq_corrections[m]
-                        
-                    else:       
-                        iq_samples_out = iq_samples_in.copy()                        
-                        
+                        #for m in range(self.M):
+                        #    iq_samples_out[m,:] = (iq_samples_in[m,:]-np.average(iq_samples_in[m,:]))*self.iq_corrections[m]
+
+                        iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
+
+                    else:
+                        iq_samples_out = np.zeros((self.iq_header.active_ant_chs, self.iq_header.cpi_length), dtype=np.complex64)
+                        iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
+                        """
+                        iq_samples_out = iq_samples_in.copy()
+
                         # -> Remove DC
                         for m in range(self.M):
                             iq_samples_out[m,:] -= np.average(iq_samples_out[m,:])
-                            
+
                         # -> Correct IQ differences
                         if self.en_iq_cal:
                             for m in self.channel_list:
                                 iq_samples_out[m, :] *= self.iq_corrections[m]
-                    
+                        """
+
                     # Truncate IQ sample matrix for further processing
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL:
                         iq_samples = iq_samples_out[:,:] # payload size must be N_proc
@@ -546,7 +561,7 @@ class delaySynchronizer():
                     
                     for m in range(self.M-1):
                         if abs(taus[m]) > self.frac_delay_tolerance:
-                            fs_ppm_offsets[m+1] = np.sign(taus[m])*0.0000001
+                            fs_ppm_offsets[m+1] = np.sign(taus[m]) * np.abs(taus[m] / 0.05) * 0.0000001
                             frac_delay_update_flag = True
                     
                     if frac_delay_update_flag:
@@ -728,7 +743,18 @@ class delaySynchronizer():
             
             # -> Inform the preceeding block that we have finished the processing
             self.in_shmem_iface.send_ctr_buff_ready(active_buff_index_dec)
-            
+
+@njit(fastmath=True, cache=True, parallel=True)
+def numba_mult(a,b):
+    return np.ascontiguousarray(a*b)
+
+@njit(fastmath=True, cache=True, parallel=True)
+def correct_iq(iq_samples_in, iq_samples_out, iq_corrections, M):
+    for m in range(M):
+        iq_samples_out[m,:] = (iq_samples_in[m,:]-np.mean(iq_samples_in[m,:]))*iq_corrections[m]
+
+    return iq_samples_out
+
 if __name__ == '__main__':
     delay_synchronizer_inst0 = delaySynchronizer()
     if delay_synchronizer_inst0.open_interfaces() == 0:

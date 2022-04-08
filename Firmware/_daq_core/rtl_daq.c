@@ -789,6 +789,7 @@ int main( int argc, char** argv )
                 }
                 else if (noise_source_state == 0){
 		    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 0);
+		    //rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
                     //rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
                     log_info("Noise source turned off ");
                     // Use pigpio to set Pi GPIO for third party Kerberos CKOVAL switches
