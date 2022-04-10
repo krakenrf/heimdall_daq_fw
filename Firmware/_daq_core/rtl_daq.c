@@ -8,7 +8,7 @@
  * Author  : Tamas Peto, Carl Laufer
  * Compatible hardware: RTL-SDR v3, KerberosSDR, KrakenSDR
  *
- * Copyright (C) 2018-2021  Tamás Pető, Carl Laufer
+ * Copyright (C) 2018-2022  Tamás Pető, Carl Laufer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <sys/time.h>  // Used for latency estimation
+#include <zmq.h>
 
 #include "ini.h"
 #include "log.h"
@@ -80,6 +81,8 @@ int noise_source_state = 0; // Noise source state is used also to track the cali
 int last_noise_source_state = 0;
 int gain_change_flag;
 int *new_gains;
+float *new_fs_corrections;
+int fs_correction_flag, fs_reset_cntr;
 uint32_t new_center_freq;
 int center_freq_change_flag;
 static uint32_t ch_no, buffer_size;
@@ -151,94 +154,112 @@ void * fifo_read_tf(void* arg)
 /*   
  *  Control FIFO read thread function
  *
- *  This thread function handles the external requests using an external FIFO file.
+ *  This thread function handles the external requests using a ZMQ socket.
  *  Upon receipt of a command, this thread infroms the main thread on the requested operation.
  *  
- *  The valid (1 byte) commands are the followings:
- *       r: Tuner reconfiguration (Deprecated - currently not used by the DSP!)
- *       n: Turning on the noise source
- *       f: Tunrning off the noise source
- *       g: Gain reconfiguration
- *       c: Center frequency tuning request
- *       2: Gentle system halt request
- * 
  *  Return values:
  *  --------------
  *       NULL
  */    
 {
-    (void)arg;   
-    uint8_t signal;     
-    int gain_read = 0;
-    int read_size;
-    uint32_t center_freq_read = 0, sample_rate_read = 0;
-    FILE * fd = fopen(CFN, "r"); // FIFO descriptor
-    if(fd==0)
+    (void)arg; 
+
+    // Initialize ZMQ Socket
+    void *context   = zmq_ctx_new ();
+    void *responder = zmq_socket (context, ZMQ_REP);
+    int rc          = zmq_bind (responder, "tcp://*:1130");
+    assert (rc == 0);
+    if(rc!=0)
     {        
-        log_fatal("Failed to open control FIFO"); 
+        log_fatal("Failed to open ZMQ socket"); 
         pthread_mutex_lock(&buff_ind_mutex);
         exit_flag = 1;
         pthread_cond_signal(&buff_ind_cond);
         pthread_mutex_unlock(&buff_ind_mutex); 
         return NULL;
     }
+    int zmq_socket_flags = 0;//|ZMQ_NOBLOCK;
 
+    // Initialize message structure
+    struct hdaq_im_msg_struct* msg;    
+    msg = (struct hdaq_im_msg_struct*) malloc(sizeof(struct hdaq_im_msg_struct));
+    
     /* Main thread loop*/
     while(!exit_flag){
-        read_size=fread(&signal, sizeof(signal), 1, fd); // Block until command is received
-        CHK_CTR_READ(read_size,1);   
+        
+        // Blocks until command is received
+        zmq_recv (responder, msg, 128, zmq_socket_flags);        
+        log_info("IM Request from: %d",msg->source_module_identifier);
+        log_info("Command id: %c",msg->command_identifier);
+        
         pthread_mutex_lock(&buff_ind_mutex);   // New command is received, acquiring the mutex 
         
         /* Tuner reconfiguration request */
-        if( (char) signal == 'r')
+        if( msg->command_identifier == 'r')
         {
-            log_info("Signal 'r': Reconfiguring the tuner");
-            read_size=fread(&center_freq_read, sizeof(uint32_t), 1, fd);
-            read_size=fread(&sample_rate_read, sizeof(uint32_t), 1, fd);
-            read_size=fread(&gain_read, sizeof(int), 1, fd);
-            log_info("Center freq: %u MHz", ((unsigned int) center_freq_read/1000000));
-            log_info("Sample rate: %u MSps", ((unsigned int) sample_rate_read/1000000));
-            log_info("Gain: %d dB",(gain_read/10));
+            log_info("Signal 'r': Reconfiguring the tuner");            
+            uint32_t * parameters = (uint32_t * ) msg->parameters;
+            
+            log_info("Center freq: %u MHz", ((unsigned int) parameters[0]/1000000));
+            log_info("Sample rate: %u MSps", ((unsigned int) parameters[1]/1000000));
+            log_info("Gain: %d dB",(parameters[2]/10));
             
             for(int i=0; i<ch_no; i++)
             {              
-              rtl_receivers[i].gain = gain_read;
-              rtl_receivers[i].center_freq = center_freq_read;
-              rtl_receivers[i].sample_rate = sample_rate_read;
+              rtl_receivers[i].gain = (int) parameters[2];
+              rtl_receivers[i].center_freq = parameters[0];
+              rtl_receivers[i].sample_rate = parameters[1];
             }
             reconfig_trigger=1;
         }
         /* Center Frequency Tuning */
-        else if ((char) signal == 'c')
+        else if (msg->command_identifier == 'c')
         {
-            log_info("Signal 'c': Center frequency tuning request");
-            read_size=fread(&center_freq_read, sizeof(uint32_t), 1, fd);
-            new_center_freq = center_freq_read;
+            log_info("Signal 'c': Center frequency tuning request");            
+            uint32_t * parameters = (uint32_t * ) msg->parameters;            
+            new_center_freq = parameters[0];
             center_freq_change_flag = 1;
-            log_info("New center frequency: %u MHz", ((unsigned int) center_freq_read/1000000));
+            log_info("New center frequency: %u MHz", ((unsigned int) parameters[0]/1000000));
         }
         /* Gain tuning*/
-        else if( (char) signal == 'g')
+        else if( msg->command_identifier == 'g')
         {
             log_info("Signal 'g': Gain tuning request");
-            read_size=fread(new_gains, sizeof(*new_gains), ch_no, fd);
+            uint32_t * parameters = (uint32_t * ) msg->parameters;
+            for(int i=0;i<ch_no;i++){
+                new_gains[i] = (int) parameters[i];
+                log_info("Channel: %d, Gain: %f dB",i, (float) parameters[i]/10);
+            }
             gain_change_flag=1;
         }
-        /* Noise source switch requests */
-        else if ( (char) signal == 'n')
+        /* Sampling Freq Correction - Used for sampling clock delay tuning*/
+        else if( msg->command_identifier == 's')
         {
-            log_info("Signal 'n': Turn on noise source");
-            //log_warn("Control noise source feature is implemented only for KerberosSDR");
-            noise_source_state = 1;
+            log_info("Signal 's': Sampling frequency correction");
+            float * parameters = (float * ) msg->parameters;
+            for(int i=0;i<ch_no;i++){
+                new_fs_corrections[i] = parameters[i];
+                log_info("Channel: %d, fs ppm offset: %.8f",i, parameters[i]);
+            }
+            fs_reset_cntr = 0;
+            fs_correction_flag=1;
         }
-        else if ( (char) signal == 'f')
+        /* Noise source switch requests */
+        else if (msg->command_identifier == 'n')
         {
-            log_info("Signal 'f': Turn off noise source");            
-            //log_warn("Control noise source feature is implemented only for KerberosSDR");
-            noise_source_state = 0;
+            //log_warn("Control noise source feature is implemented only for KerberosSDR/KrakenSDR");
+            if(msg->parameters[0] == 0)
+            {
+                log_info("Turn off noise source");
+                noise_source_state = 0;          
+            }
+            else{
+                log_info("Turn on noise source");
+                noise_source_state = 1;
+            }            
         }
         /* System halt request */
-        else if( (uint8_t) signal == 2)
+        else if(msg->command_identifier == 'h')
         {
             log_info("Signal 2: FIFO read thread exiting \n");
             exit_flag = 1;           
@@ -246,11 +267,11 @@ void * fifo_read_tf(void* arg)
         /* Send out dummy frames while the changes takes effect*/
         en_dummy_frame = 1; 
         dummy_frame_cntr = 0;
+        zmq_send (responder, "ok", 2, 0);
 
         pthread_cond_signal(&buff_ind_cond);
         pthread_mutex_unlock(&buff_ind_mutex); 
     }
-    fclose(fd);
     return NULL;
 }
 
@@ -455,7 +476,8 @@ int main( int argc, char** argv )
     /* Allocation */    
     struct iq_header_struct* iq_header = calloc(1, sizeof(struct iq_header_struct));
     
-    new_gains=calloc(ch_no, sizeof(*new_gains));
+    new_gains          = calloc(ch_no, sizeof(*new_gains));
+    new_fs_corrections = calloc(ch_no, sizeof(*new_fs_corrections));
     
     rtl_receivers = malloc(sizeof(struct rtl_rec_struct)*ch_no);    
     for(int i=0; i<ch_no; i++)
@@ -716,7 +738,34 @@ int main( int argc, char** argv )
                     }
                 }
                 gain_change_flag=0;
-            }            
+            }
+            /* Sampling frequency correction flag */
+            if(fs_correction_flag==1)
+            {   
+                if(fs_reset_cntr == 0) /* Set corrections*/
+                {
+                    for( int i=0; i<ch_no; i++)
+                    {
+                        rtl_rec = &rtl_receivers[i];
+                        if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, new_fs_corrections[i]) !=0)
+                            {log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));}                        
+                        else{log_info("Sampling frequency correction set at ch: %d, value %.8f",i, new_fs_corrections[i]);}
+                    }
+
+                }
+                else if(fs_reset_cntr == 1)
+                {
+                    for( int i=0; i<ch_no; i++) /* Tuning stage has been completed - reset corrections*/
+                    {
+                        rtl_rec = &rtl_receivers[i];
+                        if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, 0) !=0)
+                            {log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));}                        
+                        else{log_info("Sampling frequency correction set at ch: %d, value %.8f",i, 0);}
+                    }
+                    fs_correction_flag=0;
+                }
+                fs_reset_cntr ++;
+            }      
             /* Noise source switch request */
             if (last_noise_source_state != noise_source_state && config.en_noise_source_ctr==1)
             {
@@ -740,6 +789,7 @@ int main( int argc, char** argv )
                 }
                 else if (noise_source_state == 0){
 		    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 0);
+		    //rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
                     //rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
                     log_info("Noise source turned off ");
                     // Use pigpio to set Pi GPIO for third party Kerberos CKOVAL switches

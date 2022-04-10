@@ -20,17 +20,32 @@
 
    WARNING: Check the native size of the IQ header on the target device
 """
-
+# Import built-in modules
 import logging
 import sys
 from struct import pack
+import time
+from time import sleep
+
+# Import third-party modules
 import numpy as np
 import numpy.linalg as lin
 from scipy import fft
+from scipy.optimize import curve_fit
 from configparser import ConfigParser
+import zmq
+
+import numba as nb
+from numba import jit, njit
+
+# Import HeIMDALL modules
 from iq_header import IQHeader
 from shmemIface import outShmemIface, inShmemIface
-from time import sleep
+import inter_module_messages
+
+# Linear curve definition for curve fitting
+def linear_func(x, a, b):
+    return a*x+b
 
 class delaySynchronizer():
     
@@ -40,6 +55,7 @@ class delaySynchronizer():
         self.logger = logging.getLogger(__name__)
 
         self.scf_name = "_data_control/sync_control_fifo"
+        self.module_identifier = 5 # Inter-module message module identifier
         self.sync_ctr_fifo = None
         self.in_shmem_iface = None
         self.in_shmem_iface_name = ""
@@ -72,7 +88,7 @@ class delaySynchronizer():
 
         self.phase_diff_tolerance = 3 # deg, maximum allowable phase difference
         self.amp_diff_tolerance = 0.5 # power ratio  maximum allowable amplitude difference, not dB!
-        
+        self.frac_delay_tolerance = 0.05 
         self.sync_failed_cntr = 0 # Counts the number of iq or sample sync fails in track mode
         self.max_sync_fails = 3 # Maximum number of synchronization fails before the sync track is lost
         self.sync_failed_cntr_total = 0
@@ -184,7 +200,11 @@ class delaySynchronizer():
                 :return: 0: All interfaces have been succesfully initialized
                         -1: Failed to initialize one the interfaces
         """ 
-        
+        # Open RTL-DAQ control socket
+        context = zmq.Context()        
+        self.rtl_daq_socket = context.socket(zmq.REQ)
+        self.rtl_daq_socket.connect("tcp://localhost:1130")
+
         # Open Sync-control FIFO        
         try:          
             self.sync_ctr_fifo = open(self.scf_name, 'w+b', buffering=0)            
@@ -217,7 +237,6 @@ class delaySynchronizer():
             self.logger.critical("Shared memory (HWC) initialization failed, exiting..")
             return -1
         return 0
-    
     def close_interfaces(self):
         """
             Close the communication and data interfaces that are opened during the start of the module
@@ -240,7 +259,6 @@ class delaySynchronizer():
             self.out_shmem_iface_hwc.destory_sm_buffer()  
             
         self.logger.info("Interfaces are closed")
-    
     def calc_sync(self, iq_samples):
         """
             This function calculates the synchronization status of the signal processing channels.
@@ -308,6 +326,54 @@ class delaySynchronizer():
                             np.rad2deg(np.angle(iq_diffs[m]))))  
 
         return np.array(dyn_ranges), iq_diffs
+    def estimate_frac_delays(self, iq):
+        """
+            Initialization
+        """
+        start = time.time()
+
+        taus = []
+        N = iq.shape[1] # Number of samples
+        M = iq.shape[0] # Number of channels
+
+        block_size = 2**10
+        freq_scale = np.arange(-0.5,0.5,1/block_size)
+        fit_mask   = np.logical_and(freq_scale < 0.4, freq_scale > -0.4)
+            
+        phase_diff_w = np.zeros((M-1,block_size), dtype=np.complex64)
+        """
+            Processing
+        """
+        # Estimate phase transfer
+        std_ch_w_block = np.zeros((N//block_size, block_size), dtype=np.complex64)
+        #  - Transform standard channel to frequency domain block-wise
+        for block_index, block_start in enumerate(np.arange(0,N, block_size)):
+            std_ch_w_block[block_index,:] =  fft.fftshift(fft.fft(iq[0, block_start:block_start+block_size], workers=4, overwrite_x=False))
+
+        for m in range(M-1):
+            # Correct fix phase offset
+            phase_shift_w0 = np.average(iq[0]*iq[m+1].conj())
+            iq[m+1] *= phase_shift_w0
+            
+            for block_index, block_start in enumerate(np.arange(0,N, block_size)):
+                # Transform current block of the m-th channel to frequency domain
+                corr_ch_w_block  = fft.fftshift(fft.fft(iq[m+1, block_start:block_start+block_size], workers=4, overwrite_x=True))
+                # Calculate phase transfer with non-coherent integration
+                phase_diff_w[m,:] += std_ch_w_block[block_index,:]/corr_ch_w_block
+            phase_diff_w[m,:] /= (N//block_size) # Normalization
+            
+            angle_diff_w = np.angle(phase_diff_w[m,:]).real # Convert complex phasor to angle
+
+            
+                # Fit linear curve on to the estimated phase transfers and derive fractional delay
+            popt, pcov = curve_fit(linear_func, freq_scale[fit_mask], angle_diff_w[fit_mask])
+            taus.append(popt[0]/(2*np.pi))    
+
+        end = time.time()
+        print("time taken: " + str((end-start)*1000))
+        return taus
+        
+
     def start(self):
         """
             Start the main processing loop
@@ -365,7 +431,7 @@ class delaySynchronizer():
             #############################################
             #  Delay Synchronizer Finite State Machine  #
             #############################################
-            
+
             if (self.iq_header.frame_type != IQHeader.FRAME_TYPE_DUMMY):  # Check frame type
 
                 # -> IQ Preprocessing <-
@@ -375,23 +441,36 @@ class delaySynchronizer():
                         iq_frame_buffer_out = (self.out_shmem_iface_iq.buffers[active_buffer_index_iq]).view(dtype=np.complex64)
                         # IQ header offset:1 sample -> 8 byte, 1024 byte length header -> 128 "sample"
                         iq_samples_out = iq_frame_buffer_out[128:128+self.iq_header.cpi_length*self.iq_header.active_ant_chs].reshape(self.iq_header.active_ant_chs, self.iq_header.cpi_length)
-                        
+
                         # Remove DC and apply IQ correction
-                        for m in range(self.M):
-                            iq_samples_out[m,:] = (iq_samples_in[m,:]-np.average(iq_samples_in[m,:]))*self.iq_corrections[m]
-                        
-                    else:       
-                        iq_samples_out = iq_samples_in.copy()                        
-                        
+                        #for m in range(self.M):
+                        #    iq_samples_out[m,:] = (iq_samples_in[m,:]-np.average(iq_samples_in[m,:]))*self.iq_corrections[m]
+
+                        if self.en_iq_cal:
+                            iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
+                        else:
+                            iq_samples_out = copy_iq(iq_samples_in, iq_samples_out, self.M)
+                        #    for m in range(self.M):
+                        #        iq_samples_out[m,:] = iq_samples_in[m,:]
+                    else:
+                        if self.en_iq_cal:
+                            iq_samples_out = np.zeros((self.iq_header.active_ant_chs, self.iq_header.cpi_length), dtype=np.complex64)
+                            iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
+                        else:
+                            iq_samples_out = iq_samples_in.copy()
+                        """
+                        iq_samples_out = iq_samples_in.copy()
+
                         # -> Remove DC
                         for m in range(self.M):
                             iq_samples_out[m,:] -= np.average(iq_samples_out[m,:])
-                            
+
                         # -> Correct IQ differences
                         if self.en_iq_cal:
                             for m in self.channel_list:
                                 iq_samples_out[m, :] *= self.iq_corrections[m]
-                    
+                        """
+
                     # Truncate IQ sample matrix for further processing
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL:
                         iq_samples = iq_samples_out[:,:] # payload size must be N_proc
@@ -459,7 +538,7 @@ class delaySynchronizer():
                         self.current_state = "STATE_SYNC_WAIT"    
                     
                     if sample_sync_flag:
-                        self.current_state = "STATE_IQ_CAL"
+                        self.current_state = "STATE_FRAC_SAMPLE_CAL"
                 #
                 #------------------------------------------>
                 #
@@ -472,7 +551,45 @@ class delaySynchronizer():
 
                     if (self.iq_header.cpi_index > self.last_update_ind+10):
                         self.current_state = "STATE_SAMPLE_CAL"
+                
+                #
+                #------------------------------------------>
+                #
+                # Fractional sample delay correction method idea credit to: Mikko Laakso, "Multichannel coherent receiver on the RTL-SDR" 2019
+                elif self.current_state == "STATE_FRAC_SAMPLE_CAL":
+                    sync_state          = 3
+                    # TODO: Change sync state -> changes have to take effect in the HWC module as well
+                    # Calculate fractional delays
+                    taus = self.estimate_frac_delays(iq_samples[0:self.N_proc])
+                    self.logger.info(f"Fractional delays: {taus}")
                     
+                    # Determine and set tune values
+                    frac_delay_update_flag = False
+                    fs_ppm_offsets=[0]*self.M 
+                    
+                    for m in range(self.M-1):
+                        if abs(taus[m]) > self.frac_delay_tolerance:
+                            fs_ppm_offsets[m+1] = np.sign(taus[m]) * np.abs(taus[m] / 0.05) * 0.0000001
+                            frac_delay_update_flag = True
+                    
+                    if frac_delay_update_flag:
+                        self.logger.info(f"Sending ppm offsets: {np.sign(fs_ppm_offsets)}")
+                        msg_byte_array = inter_module_messages.pack_msg_sample_freq_tune(self.module_identifier, fs_ppm_offsets)
+                        self.rtl_daq_socket.send(msg_byte_array)
+                        reply = self.rtl_daq_socket.recv()
+                        self.logger.info(f"Received reply: {reply}")
+                        self.last_update_ind=self.iq_header.cpi_index
+                        self.current_state = "STATE_FRAC_SYNC_WAIT"
+                    else:
+                        self.current_state = "STATE_IQ_CAL"
+                #
+                #------------------------------------------>
+                #
+                elif self.current_state == "STATE_FRAC_SYNC_WAIT":
+                    sync_state          = 3
+                    if (self.iq_header.cpi_index > self.last_update_ind+10):
+                        self.current_state = "STATE_FRAC_SAMPLE_CAL"
+                   
                 #
                 #------------------------------------------>
                 #
@@ -634,7 +751,27 @@ class delaySynchronizer():
             
             # -> Inform the preceeding block that we have finished the processing
             self.in_shmem_iface.send_ctr_buff_ready(active_buff_index_dec)
-            
+
+@njit(fastmath=True, cache=True, parallel=True)
+def numba_mult(a,b):
+    return np.ascontiguousarray(a*b)
+
+@njit(fastmath=True, cache=True, parallel=True)
+def correct_iq(iq_samples_in, iq_samples_out, iq_corrections, M):
+    for m in range(M):
+        iq_samples_out[m,:] = (iq_samples_in[m,:]-np.mean(iq_samples_in[m,:]))*iq_corrections[m]
+
+    return iq_samples_out
+
+@njit(fastmath=True, cache=True, parallel=True)
+def copy_iq(iq_samples_in, iq_samples_out, M):
+    for m in range(M):
+        iq_samples_out[m,:] = iq_samples_in[m,:]
+
+    return iq_samples_out
+
+
+
 if __name__ == '__main__':
     delay_synchronizer_inst0 = delaySynchronizer()
     if delay_synchronizer_inst0.open_interfaces() == 0:

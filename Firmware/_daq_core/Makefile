@@ -29,7 +29,7 @@ daq_util:
 	$(CC) $(CFLAGS) -c -o sh_mem_util.o sh_mem_util.c
 
 rtl_daq: iq_header.c log.c ini.c rtl_daq.c rtl_daq.h
-	$(CC) $(CFLAGS) log.o ini.o iq_header.o -o rtl_daq.out rtl_daq.c -lpthread -lrtlsdr $(PIGPIO)
+	$(CC) $(CFLAGS) log.o ini.o iq_header.o -o rtl_daq.out rtl_daq.c -lpthread -lrtlsdr -lzmq $(PIGPIO)
 
 sync: iq_header.c log.c ini.c sync.c rtl_daq.h
 	$(CC) $(CFLAGS) log.o ini.o iq_header.o -o sync.out sync.c -lpthread

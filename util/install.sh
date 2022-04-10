@@ -7,9 +7,9 @@ echo "6/1 Install build dependencies for the realtek driver"
 sudo apt install cmake
 sudo apt install libusb-1.0-0-dev
 echo "6/2 Build and install rtl-sdr driver"
-git clone https://github.com/rtlsdrblog/rtl-sdr-kerberos
+git clone https://github.com/krakenrf/librtlsdr
 
-cd rtl-sdr-kerberos
+cd librtlsdr
 mkdir build
 cd build
 cmake ../ -DINSTALL_UDEV_RULES=ON
@@ -50,7 +50,12 @@ sudo python3 -m pip install configparser
 sudo apt-get install libatlas-base-dev gfortran
 sudo python3 -m pip install scipy
 sudo python3 -m pip install plotly
+sudo python3 -m pip install pyzmq
 
+sudo apt install libzmq3-dev -y
 echo "6/6 Build HeIMDALL DAQ Firmware"
 cd heimdall_daq_fw/Firmware/_daq_core
 make
+
+# TODO: Check installed versions:
+# Scipy: 1.8 or later
