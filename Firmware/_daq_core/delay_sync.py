@@ -548,6 +548,7 @@ class delaySynchronizer():
                 #
                 #------------------------------------------>
                 #
+                # Fractional sample delay correction method idea credit to: Mikko Laakso, "Multichannel coherent receiver on the RTL-SDR" 2019
                 elif self.current_state == "STATE_FRAC_SAMPLE_CAL":
                     sync_state          = 3
                     # TODO: Change sync state -> changes have to take effect in the HWC module as well
