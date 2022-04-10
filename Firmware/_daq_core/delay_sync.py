@@ -446,11 +446,18 @@ class delaySynchronizer():
                         #for m in range(self.M):
                         #    iq_samples_out[m,:] = (iq_samples_in[m,:]-np.average(iq_samples_in[m,:]))*self.iq_corrections[m]
 
-                        iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
-
+                        if self.en_iq_cal:
+                            iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
+                        else:
+                            iq_samples_out = copy_iq(iq_samples_in, iq_samples_out, self.M)
+                        #    for m in range(self.M):
+                        #        iq_samples_out[m,:] = iq_samples_in[m,:]
                     else:
-                        iq_samples_out = np.zeros((self.iq_header.active_ant_chs, self.iq_header.cpi_length), dtype=np.complex64)
-                        iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
+                        if self.en_iq_cal:
+                            iq_samples_out = np.zeros((self.iq_header.active_ant_chs, self.iq_header.cpi_length), dtype=np.complex64)
+                            iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
+                        else:
+                            iq_samples_out = iq_samples_in.copy()
                         """
                         iq_samples_out = iq_samples_in.copy()
 
@@ -755,6 +762,15 @@ def correct_iq(iq_samples_in, iq_samples_out, iq_corrections, M):
         iq_samples_out[m,:] = (iq_samples_in[m,:]-np.mean(iq_samples_in[m,:]))*iq_corrections[m]
 
     return iq_samples_out
+
+@njit(fastmath=True, cache=True, parallel=True)
+def copy_iq(iq_samples_in, iq_samples_out, M):
+    for m in range(M):
+        iq_samples_out[m,:] = iq_samples_in[m,:]
+
+    return iq_samples_out
+
+
 
 if __name__ == '__main__':
     delay_synchronizer_inst0 = delaySynchronizer()
