@@ -136,7 +136,7 @@ Restart the Pi, or logout, then log on again.
 sudo reboot
 ```
 
-7. Setup the Miniconda Environment
+5. Setup the Miniconda Environment
 
 ``` bash
 conda create -n kraken python=3.9.7
@@ -148,7 +148,7 @@ conda install configparser
 conda install pyzmq
 ```
 
-8. Create a root folder and clone the Heimdall DAQ Firmware
+6. Create a root folder and clone the Heimdall DAQ Firmware
 
 ``` bash
 cd
@@ -160,7 +160,7 @@ cd heimdall_daq_fw
 git checkout development
 ```
 
-9. Build Heimdall C files
+7. Build Heimdall C files
 
 First copy the libNe10.a library over to _daq_core
 ``` bash
