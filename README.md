@@ -157,7 +157,6 @@ cd krakensdr
 
 git clone https://github.com/krakenrf/heimdall_daq_fw
 cd heimdall_daq_fw
-git checkout development
 ```
 
 7. Build Heimdall C files
