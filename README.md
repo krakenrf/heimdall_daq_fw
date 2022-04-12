@@ -192,7 +192,7 @@ make
 
 ## Next Steps:
 
-Now you will probably want to install the direction of arrival DSP code found in https://github.com/krakenrf/krakensdr_doa/tree/clientside_graphs.
+Now you will probably want to install the direction of arrival DSP code found in https://github.com/krakenrf/krakensdr_doa.
 
 ## Advanced Operation Notes:
 ### Test Run:
