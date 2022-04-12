@@ -92,6 +92,11 @@ class delaySynchronizer():
         self.sync_failed_cntr = 0 # Counts the number of iq or sample sync fails in track mode
         self.max_sync_fails = 3 # Maximum number of synchronization fails before the sync track is lost
         self.sync_failed_cntr_total = 0
+
+        self.MIN_FS_PPM_OFFSET = 0.0000001
+        self.INT_FS_TUNE_GAIN  = 100
+        self.FRAC_FS_TUNE_GAIN = 20
+
         
         # Auxiliary state variables
         self.sample_compensation_cntr = 0 # Count the number of issued delay compensations
@@ -494,7 +499,8 @@ class delaySynchronizer():
                     sync_state        = 2
                     sample_sync_flag  = True
                     delay_update_flag = 0
-                    
+                    fs_ppm_offsets=[0]*self.M 
+
                     # ->  Calculate correlation functions            
                     np_zeros = np.zeros(self.N_proc, dtype=np.complex64)
                     x_padd = np.concatenate([iq_samples[self.std_ch_ind, 0:self.N_proc], np_zeros])
@@ -521,24 +527,36 @@ class delaySynchronizer():
                             break
                         
                         # Calculate sample offset
-                        self.delays[m] = (self.N_proc - peak_index)                        
+                        self.delays[m] = (self.N_proc - peak_index)
+                        fs_ppm_offsets[m] = (self.N_proc - peak_index) * self.INT_FS_TUNE_GAIN * self.MIN_FS_PPM_OFFSET
                         if np.abs(self.delays[m]) >= 1:
                             sample_sync_flag = False # Misalling detected
                             delay_update_flag=1
                         self.logger.debug("Channel {:d}, delay: {:d}".format(m, self.delays[m]))
                     # Set time delay 
                     if delay_update_flag:
+                        """
                         self.logger.info("Sending delays compensations [{:d}]".format(self.iq_header.cpi_index))
                         delays = (-1*self.delays).tolist()
                         
                         self.sync_ctr_fifo.write(self.sync_delay_byte)
                         self.sync_ctr_fifo.write(pack("i"*self.M,*delays))
                         self.sample_compensation_cntr+=1  # Used to track how many delays compensations have we sent so far
-                        self.last_update_ind=self.iq_header.cpi_index
+                        self.last_update_ind=self.iq_header.cpi_index                        
                         self.current_state = "STATE_SYNC_WAIT"    
-                    
+                        """
+                        fs_ppm_offsets
+                        self.logger.info(f"Sending ppm offsets: {np.sign(fs_ppm_offsets)}")
+                        msg_byte_array = inter_module_messages.pack_msg_sample_freq_tune(self.module_identifier, fs_ppm_offsets)
+                        self.rtl_daq_socket.send(msg_byte_array)
+                        reply = self.rtl_daq_socket.recv()
+                        self.logger.info(f"Received reply: {reply}")
+                        self.last_update_ind=self.iq_header.cpi_index
+                        self.current_state = "STATE_SYNC_WAIT"
+                        
                     if sample_sync_flag:
-                        self.current_state = "STATE_FRAC_SAMPLE_CAL"
+                        #self.current_state = "STATE_FRAC_SAMPLE_CAL"
+                        self.current_state = "DUMMY"
                 #
                 #------------------------------------------>
                 #
@@ -552,6 +570,13 @@ class delaySynchronizer():
                     if (self.iq_header.cpi_index > self.last_update_ind+10):
                         self.current_state = "STATE_SAMPLE_CAL"
                 
+                #
+                #------------------------------------------>
+                #
+                elif self.current_state == "DUMMY": # DUMMY state for development purpose only
+                    sync_state = 3
+                
+
                 #
                 #------------------------------------------>
                 #
@@ -569,7 +594,7 @@ class delaySynchronizer():
                     
                     for m in range(self.M-1):
                         if abs(taus[m]) > self.frac_delay_tolerance:
-                            fs_ppm_offsets[m+1] = np.sign(taus[m]) * np.abs(taus[m] / 0.05) * 0.0000001
+                            fs_ppm_offsets[m+1] = np.sign(taus[m]) * np.abs(taus[m] * self.FRAC_FS_TUNE_GAIN) * self.MIN_FS_PPM_OFFSET
                             frac_delay_update_flag = True
                     
                     if frac_delay_update_flag:
