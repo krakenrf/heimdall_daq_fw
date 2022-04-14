@@ -65,7 +65,7 @@
  * but sends out dummy frames only, until NO_DUMMY_FRAMES number of
  * frames have not been sent out.
  */
-#define NO_DUMMY_FRAMES 8
+#define NO_DUMMY_FRAMES 2
 int en_dummy_frame = 0; 
 int dummy_frame_cntr = 0;
 /* ------> DUMMY FRAMES <------*/

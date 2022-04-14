@@ -95,7 +95,7 @@ class delaySynchronizer():
 
         self.MIN_FS_PPM_OFFSET = 0.0000001
         self.MAX_FS_PPM_OFFSET = 0.001
-        self.INT_FS_TUNE_GAIN  = np.array([[5, 0],[50, 20]]) #Reference table for tuning - [Delay limits] [Tune gains]
+        self.INT_FS_TUNE_GAIN  = np.array([[10, 2, 0],[50, 10, 8]]) #Reference table for tuning - [Delay limits] [Tune gains]
         self.FRAC_FS_TUNE_GAIN = 20
 
         
@@ -265,7 +265,7 @@ class delaySynchronizer():
             self.out_shmem_iface_hwc.destory_sm_buffer()  
             
         self.logger.info("Interfaces are closed")
-    def calc_sync(self, iq_samples):
+    def calc_iq_sync(self, iq_samples):
         """
             This function calculates the synchronization status of the signal processing channels.
             
@@ -540,16 +540,6 @@ class delaySynchronizer():
                         self.logger.info("Channel {:d}, delay: {:d}, tune gain: {:d} ppm-offset: {:.7f}, ".format(m, self.delays[m], fs_tune_gain_m, fs_ppm_offsets[m]))
                     # Set time delay 
                     if delay_update_flag:
-                        """
-                        self.logger.info("Sending delays compensations [{:d}]".format(self.iq_header.cpi_index))
-                        delays = (-1*self.delays).tolist()
-                        
-                        self.sync_ctr_fifo.write(self.sync_delay_byte)
-                        self.sync_ctr_fifo.write(pack("i"*self.M,*delays))
-                        self.sample_compensation_cntr+=1  # Used to track how many delays compensations have we sent so far
-                        self.last_update_ind=self.iq_header.cpi_index                        
-                        self.current_state = "STATE_SYNC_WAIT"    
-                        """
                         msg_byte_array = inter_module_messages.pack_msg_sample_freq_tune(self.module_identifier, fs_ppm_offsets)
                         self.rtl_daq_socket.send(msg_byte_array)
                         reply = self.rtl_daq_socket.recv()
@@ -559,8 +549,8 @@ class delaySynchronizer():
                         
                     if sample_sync_flag:
                         self.sample_compensation_cntr+=1 
-                        self.current_state = "STATE_FRAC_SAMPLE_CAL"  # Used to track how many succesfull compenssation have been performed so far 
-                        #self.current_state = "DUMMY"
+                        #self.current_state = "STATE_FRAC_SAMPLE_CAL"  # Used to track how many succesfull compenssation have been performed so far 
+                        self.current_state = "DUMMY"
                 #
                 #------------------------------------------>
                 #
@@ -570,9 +560,12 @@ class delaySynchronizer():
                     # Carls Note: Seems we need at least 10 frames otherwise the initial calibration gets stuck??
                     #print("CPI INDEX : " +str(self.iq_header.cpi_index))
                     #print("LAST UPDATE INDEX : " +str(self.last_update_ind))
-
-                    if (self.iq_header.cpi_index > self.last_update_ind+10):
-                        self.current_state = "STATE_SAMPLE_CAL"
+                    if self.last_update_ind+1 != self.iq_header.cpi_index:
+                        self.current_state = "STATE_SAMPLE_CAL"                        
+                    else:
+                        self.last_update_ind += 1                        
+                    #if (self.iq_header.cpi_index > self.last_update_ind+self.SYNC_WAIT):
+                        #self.current_state = "STATE_SAMPLE_CAL"
                 
                 #
                 #------------------------------------------>
@@ -629,7 +622,7 @@ class delaySynchronizer():
                     iq_sync_flag        = True                
                     
                     if self.en_iq_cal:
-                        dyn_ranges, iq_diffs = self.calc_sync(iq_samples)
+                        dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
                         
                         if (dyn_ranges < self.min_corr_peak_dyn_range).any():
                             self.logger.warning("Correlation peak dynamic range is insufficient to perform calibration")
@@ -671,7 +664,7 @@ class delaySynchronizer():
                     iq_sync_flag     = True
                     # Wait here until the calibration frame is turned off
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_DATA: # Normal data frame
-                        dyn_ranges, iq_diffs = self.calc_sync(iq_samples)
+                        dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
                         if self.cal_track_mode == 1:
                             self.iq_diff_ref[:] = iq_diffs[:]
                         self.current_state = "STATE_TRACK"
@@ -689,7 +682,7 @@ class delaySynchronizer():
                     if self.cal_track_mode == 1 or \
                        (self.cal_track_mode == 2 and self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL):
 
-                        dyn_ranges, iq_diffs = self.calc_sync(iq_samples)
+                        dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
 
                         # Check sample sync loss
                         if (dyn_ranges < self.min_corr_peak_dyn_range).any():
