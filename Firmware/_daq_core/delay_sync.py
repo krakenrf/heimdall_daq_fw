@@ -95,7 +95,7 @@ class delaySynchronizer():
 
         self.MIN_FS_PPM_OFFSET = 0.0000001
         self.MAX_FS_PPM_OFFSET = 0.001
-        self.INT_FS_TUNE_GAIN  = np.array([[10, 2, 0],[50, 10, 8]]) #Reference table for tuning - [Delay limits] [Tune gains]
+        self.INT_FS_TUNE_GAIN  = np.array([[100, 2, 0],[50, 25, 15]]) #Reference table for tuning - [Delay limits] [Tune gains]
         self.FRAC_FS_TUNE_GAIN = 20
 
         
@@ -549,31 +549,16 @@ class delaySynchronizer():
                         
                     if sample_sync_flag:
                         self.sample_compensation_cntr+=1 
-                        #self.current_state = "STATE_FRAC_SAMPLE_CAL"  # Used to track how many succesfull compenssation have been performed so far 
-                        self.current_state = "DUMMY"
+                        self.current_state = "STATE_FRAC_SAMPLE_CAL"  # Used to track how many succesfull compenssation have been performed so far 
                 #
                 #------------------------------------------>
                 #
                 elif self.current_state == "STATE_SYNC_WAIT":
-                    sync_state = 3
-                    # Wait for at least 10 frames to update the previously sent delay values
-                    # Carls Note: Seems we need at least 10 frames otherwise the initial calibration gets stuck??
-                    #print("CPI INDEX : " +str(self.iq_header.cpi_index))
-                    #print("LAST UPDATE INDEX : " +str(self.last_update_ind))
-                    if self.last_update_ind+1 != self.iq_header.cpi_index:
-                        self.current_state = "STATE_SAMPLE_CAL"                        
-                    else:
-                        self.last_update_ind += 1                        
-                    #if (self.iq_header.cpi_index > self.last_update_ind+self.SYNC_WAIT):
-                        #self.current_state = "STATE_SAMPLE_CAL"
-                
-                #
-                #------------------------------------------>
-                #
-                elif self.current_state == "DUMMY": # DUMMY state for development purpose only
-                    sync_state = 3
-                
-
+                    sync_state = 3                    
+                    
+                    # Hold this state until the first summy frame arrives
+                    if self.last_update_ind+1 == self.iq_header.cpi_index:
+                        self.last_update_ind += 1
                 #
                 #------------------------------------------>
                 #
@@ -609,9 +594,10 @@ class delaySynchronizer():
                 #
                 elif self.current_state == "STATE_FRAC_SYNC_WAIT":
                     sync_state          = 3
-                    if (self.iq_header.cpi_index > self.last_update_ind+10):
-                        self.current_state = "STATE_FRAC_SAMPLE_CAL"
-                   
+                
+                    # Hold this state until the first summy frame arrives
+                    if self.last_update_ind+1 == self.iq_header.cpi_index:
+                        self.last_update_ind += 1                           
                 #
                 #------------------------------------------>
                 #
@@ -739,6 +725,14 @@ class delaySynchronizer():
             elif (self.iq_header.frame_type == IQHeader.FRAME_TYPE_DUMMY): 
                 # Reset instantaneous sync failed counter (New noise burst will start)
                 self.sync_failed_cntr = 0
+
+                # To speed up the calibration, this first call frame will be checked immediatly
+                if self.current_state == "STATE_SYNC_WAIT":
+                    self.current_state = "STATE_SAMPLE_CAL"
+                elif self.current_state == "STATE_FRAC_SYNC_WAIT":
+                    self.current_state = "STATE_FRAC_SAMPLE_CAL"
+                    
+
 
             #############################################   
             #         SEND PROCESSED DATA BLOCK         #  
