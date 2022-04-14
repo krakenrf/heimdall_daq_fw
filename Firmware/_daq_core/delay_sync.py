@@ -94,7 +94,8 @@ class delaySynchronizer():
         self.sync_failed_cntr_total = 0
 
         self.MIN_FS_PPM_OFFSET = 0.0000001
-        self.INT_FS_TUNE_GAIN  = 100
+        self.MAX_FS_PPM_OFFSET = 0.001
+        self.INT_FS_TUNE_GAIN  = np.array([[5, 0],[50, 20]]) #Reference table for tuning - [Delay limits] [Tune gains]
         self.FRAC_FS_TUNE_GAIN = 20
 
         
@@ -527,12 +528,16 @@ class delaySynchronizer():
                             break
                         
                         # Calculate sample offset
-                        self.delays[m] = (self.N_proc - peak_index)
-                        fs_ppm_offsets[m] = (self.N_proc - peak_index) * self.INT_FS_TUNE_GAIN * self.MIN_FS_PPM_OFFSET
+                        self.delays[m] = (self.N_proc - peak_index)                              
+                        fs_tune_gain_m = (self.INT_FS_TUNE_GAIN[1,(self.INT_FS_TUNE_GAIN[0,:] <= abs(self.delays[m]))])[0]      
+                        fs_ppm_offsets[m] = -1*self.delays[m] * fs_tune_gain_m * self.MIN_FS_PPM_OFFSET                        
+                        if abs(fs_ppm_offsets[m]) > self.MAX_FS_PPM_OFFSET:
+                            fs_ppm_offsets[m] = np.sign(fs_ppm_offsets[m])*self.MAX_FS_PPM_OFFSET                        
+
                         if np.abs(self.delays[m]) >= 1:
                             sample_sync_flag = False # Misalling detected
                             delay_update_flag=1
-                        self.logger.debug("Channel {:d}, delay: {:d}".format(m, self.delays[m]))
+                        self.logger.info("Channel {:d}, delay: {:d}, tune gain: {:d} ppm-offset: {:.7f}, ".format(m, self.delays[m], fs_tune_gain_m, fs_ppm_offsets[m]))
                     # Set time delay 
                     if delay_update_flag:
                         """
@@ -545,8 +550,6 @@ class delaySynchronizer():
                         self.last_update_ind=self.iq_header.cpi_index                        
                         self.current_state = "STATE_SYNC_WAIT"    
                         """
-                        fs_ppm_offsets
-                        self.logger.info(f"Sending ppm offsets: {np.sign(fs_ppm_offsets)}")
                         msg_byte_array = inter_module_messages.pack_msg_sample_freq_tune(self.module_identifier, fs_ppm_offsets)
                         self.rtl_daq_socket.send(msg_byte_array)
                         reply = self.rtl_daq_socket.recv()
@@ -555,8 +558,9 @@ class delaySynchronizer():
                         self.current_state = "STATE_SYNC_WAIT"
                         
                     if sample_sync_flag:
-                        #self.current_state = "STATE_FRAC_SAMPLE_CAL"
-                        self.current_state = "DUMMY"
+                        self.sample_compensation_cntr+=1 
+                        self.current_state = "STATE_FRAC_SAMPLE_CAL"  # Used to track how many succesfull compenssation have been performed so far 
+                        #self.current_state = "DUMMY"
                 #
                 #------------------------------------------>
                 #
