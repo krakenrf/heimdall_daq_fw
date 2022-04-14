@@ -19,12 +19,14 @@
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
    WARNING: Check the native size of the IQ header on the target device
+   
+   Fractional sample delay compensation by sampling frequency tuning:
+        Mikko Laakso, "Multichannel coherent receiver on the RTL-SDR" 2019
 """
 # Import built-in modules
 import logging
 import sys
 from struct import pack
-import time
 from time import sleep
 
 # Import third-party modules
@@ -54,9 +56,7 @@ class delaySynchronizer():
         logging.basicConfig(level=10)
         self.logger = logging.getLogger(__name__)
 
-        self.scf_name = "_data_control/sync_control_fifo"
-        self.module_identifier = 5 # Inter-module message module identifier
-        self.sync_ctr_fifo = None
+        self.module_identifier = 5 # Inter-module message module identifier        
         self.in_shmem_iface = None
         self.in_shmem_iface_name = ""
         self.out_shmem_iface_iq = None
@@ -77,8 +77,7 @@ class delaySynchronizer():
         
         # Calibration control parameters
         self.N_proc = 2**18        
-        self.std_ch_ind = 0 # Index of standard channel. All channels are matched in delay to this one
-        self.en_frac_cal = False # Enables fractional sample delay compensation, when decimation ratio is greather than 1
+        self.std_ch_ind = 0 # Index of standard channel. All channels are matched in delay to this one        
         self.en_iq_cal = False # Enables amlitude and phase calibration
                 
         self.min_corr_peak_dyn_range = 20 # [dB]
@@ -88,7 +87,7 @@ class delaySynchronizer():
 
         self.phase_diff_tolerance = 3 # deg, maximum allowable phase difference
         self.amp_diff_tolerance = 0.5 # power ratio  maximum allowable amplitude difference, not dB!
-        self.frac_delay_tolerance = 0.05 
+        self.frac_delay_tolerance = 0.03
         self.sync_failed_cntr = 0 # Counts the number of iq or sample sync fails in track mode
         self.max_sync_fails = 3 # Maximum number of synchronization fails before the sync track is lost
         self.sync_failed_cntr_total = 0
@@ -168,11 +167,6 @@ class delaySynchronizer():
         self.max_sync_fails = parser.getint('calibration','maximum_sync_fails')
         self.amplitude_cal_mode = parser.get('calibration','amplitude_cal_mode')
         
-
-        if parser.getint('calibration', 'en_frac_cal'):
-            self.en_frac_cal = True
-        else:
-            self.en_frac_cal = False
         if parser.getint('calibration', 'en_iq_cal'):
             self.en_iq_cal = True
         else:
@@ -210,14 +204,6 @@ class delaySynchronizer():
         context = zmq.Context()        
         self.rtl_daq_socket = context.socket(zmq.REQ)
         self.rtl_daq_socket.connect("tcp://localhost:1130")
-
-        # Open Sync-control FIFO        
-        try:          
-            self.sync_ctr_fifo = open(self.scf_name, 'w+b', buffering=0)            
-        except OSError as err:
-            self.logger.critical("OS error: {0}".format(err))
-            self.logger.critical("Failed to open sync control fifo")            
-            return -1
         
         # Open shared memory interface to receive data from the decimator
         self.in_shmem_iface = inShmemIface(self.in_shmem_iface_name)
@@ -247,10 +233,6 @@ class delaySynchronizer():
         """
             Close the communication and data interfaces that are opened during the start of the module
         """
-        if self.sync_ctr_fifo is not None:
-            self.sync_ctr_fifo.write(pack('B',2) )
-            self.sync_ctr_fifo.close()
-
         if self.in_shmem_iface is not None:
             self.in_shmem_iface.destory_sm_buffer()
                 
@@ -332,17 +314,43 @@ class delaySynchronizer():
                             np.rad2deg(np.angle(iq_diffs[m]))))  
 
         return np.array(dyn_ranges), iq_diffs
-    def estimate_frac_delays(self, iq):
+    def estimate_frac_delays(self, iq_samples, block_size=2**10):
+        """
+            This function estimates the fractional sample delay between the coherent receiver channels
+            
+            Implementation notes:
+            ---------------------
+            The estimation is performed based on the phase-frequency difference curve of the channels, which theroretical can be
+            described with a linear curve. The slope of this curve is in direct relation to time delay between the two channels.
+            In the first processing step the phase-frequency function is estimated  and in the second step a linear curve is fitted
+            to the estimated values.
+            
+            The phase-frequency function estimation is realized by splitting the full signal array into smaller block, on which 
+            the phase difference is estimated individually. The block-wise obtained results are then are averaged. 
+            The sample size of a cohrent-block is controlled by the "block_size" parameter of the function.
+
+            Parameters:
+            -----------
+                :param: iq_samples: Processed IQ samples  (May contain less samples than what can be found in a frame)
+                :param: block_size: Number of samples in coherent block (default:1024)
+                
+                :type : iq_samples: Complex 2D numpy array
+                :type : block_size: int
+            
+            Return values:
+            --------------
+                :return: taus: Estimated fractional sample delays
+                :rtype : taus: List of floats
+                
+        """
+
         """
             Initialization
         """
-        start = time.time()
-
         taus = []
-        N = iq.shape[1] # Number of samples
-        M = iq.shape[0] # Number of channels
-
-        block_size = 2**10
+        N = iq_samples.shape[1] # Number of samples
+        M = iq_samples.shape[0] # Number of channels
+        
         freq_scale = np.arange(-0.5,0.5,1/block_size)
         fit_mask   = np.logical_and(freq_scale < 0.4, freq_scale > -0.4)
             
@@ -354,16 +362,16 @@ class delaySynchronizer():
         std_ch_w_block = np.zeros((N//block_size, block_size), dtype=np.complex64)
         #  - Transform standard channel to frequency domain block-wise
         for block_index, block_start in enumerate(np.arange(0,N, block_size)):
-            std_ch_w_block[block_index,:] =  fft.fftshift(fft.fft(iq[0, block_start:block_start+block_size], workers=4, overwrite_x=False))
+            std_ch_w_block[block_index,:] =  fft.fftshift(fft.fft(iq_samples[0, block_start:block_start+block_size], workers=4, overwrite_x=False))
 
         for m in range(M-1):
             # Correct fix phase offset
-            phase_shift_w0 = np.average(iq[0]*iq[m+1].conj())
-            iq[m+1] *= phase_shift_w0
+            phase_shift_w0 = np.average(iq_samples[0]*iq_samples[m+1].conj())
+            iq_samples[m+1] *= phase_shift_w0
             
             for block_index, block_start in enumerate(np.arange(0,N, block_size)):
                 # Transform current block of the m-th channel to frequency domain
-                corr_ch_w_block  = fft.fftshift(fft.fft(iq[m+1, block_start:block_start+block_size], workers=4, overwrite_x=True))
+                corr_ch_w_block  = fft.fftshift(fft.fft(iq_samples[m+1, block_start:block_start+block_size], workers=4, overwrite_x=True))
                 # Calculate phase transfer with non-coherent integration
                 phase_diff_w[m,:] += std_ch_w_block[block_index,:]/corr_ch_w_block
             phase_diff_w[m,:] /= (N//block_size) # Normalization
@@ -375,8 +383,6 @@ class delaySynchronizer():
             popt, pcov = curve_fit(linear_func, freq_scale[fit_mask], angle_diff_w[fit_mask])
             taus.append(popt[0]/(2*np.pi))    
 
-        end = time.time()
-        print("time taken: " + str((end-start)*1000))
         return taus
         
 
@@ -448,34 +454,16 @@ class delaySynchronizer():
                         # IQ header offset:1 sample -> 8 byte, 1024 byte length header -> 128 "sample"
                         iq_samples_out = iq_frame_buffer_out[128:128+self.iq_header.cpi_length*self.iq_header.active_ant_chs].reshape(self.iq_header.active_ant_chs, self.iq_header.cpi_length)
 
-                        # Remove DC and apply IQ correction
-                        #for m in range(self.M):
-                        #    iq_samples_out[m,:] = (iq_samples_in[m,:]-np.average(iq_samples_in[m,:]))*self.iq_corrections[m]
-
                         if self.en_iq_cal:
                             iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
                         else:
                             iq_samples_out = copy_iq(iq_samples_in, iq_samples_out, self.M)
-                        #    for m in range(self.M):
-                        #        iq_samples_out[m,:] = iq_samples_in[m,:]
                     else:
                         if self.en_iq_cal:
                             iq_samples_out = np.zeros((self.iq_header.active_ant_chs, self.iq_header.cpi_length), dtype=np.complex64)
                             iq_samples_out = correct_iq(iq_samples_in, iq_samples_out, self.iq_corrections, self.M)
                         else:
                             iq_samples_out = iq_samples_in.copy()
-                        """
-                        iq_samples_out = iq_samples_in.copy()
-
-                        # -> Remove DC
-                        for m in range(self.M):
-                            iq_samples_out[m,:] -= np.average(iq_samples_out[m,:])
-
-                        # -> Correct IQ differences
-                        if self.en_iq_cal:
-                            for m in self.channel_list:
-                                iq_samples_out[m, :] *= self.iq_corrections[m]
-                        """
 
                     # Truncate IQ sample matrix for further processing
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL:
@@ -537,19 +525,19 @@ class delaySynchronizer():
                         if np.abs(self.delays[m]) >= 1:
                             sample_sync_flag = False # Misalling detected
                             delay_update_flag=1
-                        self.logger.info("Channel {:d}, delay: {:d}, tune gain: {:d} ppm-offset: {:.7f}, ".format(m, self.delays[m], fs_tune_gain_m, fs_ppm_offsets[m]))
+                        self.logger.debug("Channel {:d}, delay: {:d}, tune gain: {:d} ppm-offset: {:.7f}, ".format(m, self.delays[m], fs_tune_gain_m, fs_ppm_offsets[m]))
                     # Set time delay 
                     if delay_update_flag:
                         msg_byte_array = inter_module_messages.pack_msg_sample_freq_tune(self.module_identifier, fs_ppm_offsets)
                         self.rtl_daq_socket.send(msg_byte_array)
                         reply = self.rtl_daq_socket.recv()
-                        self.logger.info(f"Received reply: {reply}")
+                        self.logger.debug(f"Received reply: {reply}")
                         self.last_update_ind=self.iq_header.cpi_index
                         self.current_state = "STATE_SYNC_WAIT"
                         
                     if sample_sync_flag:
-                        self.sample_compensation_cntr+=1 
-                        self.current_state = "STATE_FRAC_SAMPLE_CAL"  # Used to track how many succesfull compenssation have been performed so far 
+                        self.sample_compensation_cntr+=1 # Used to track how many succesfull compenssation have been performed so far 
+                        self.current_state = "STATE_FRAC_SAMPLE_CAL"  
                 #
                 #------------------------------------------>
                 #
@@ -561,14 +549,13 @@ class delaySynchronizer():
                         self.last_update_ind += 1
                 #
                 #------------------------------------------>
-                #
-                # Fractional sample delay correction method idea credit to: Mikko Laakso, "Multichannel coherent receiver on the RTL-SDR" 2019
+                #                
                 elif self.current_state == "STATE_FRAC_SAMPLE_CAL":
                     sync_state          = 3
                     # TODO: Change sync state -> changes have to take effect in the HWC module as well
                     # Calculate fractional delays
                     taus = self.estimate_frac_delays(iq_samples[0:self.N_proc])
-                    self.logger.info(f"Fractional delays: {taus}")
+                    self.logger.debug(f"Fractional delays: {taus}")
                     
                     # Determine and set tune values
                     frac_delay_update_flag = False
@@ -580,11 +567,11 @@ class delaySynchronizer():
                             frac_delay_update_flag = True
                     
                     if frac_delay_update_flag:
-                        self.logger.info(f"Sending ppm offsets: {np.sign(fs_ppm_offsets)}")
+                        self.logger.debug(f"Sending ppm offsets: {fs_ppm_offsets}")
                         msg_byte_array = inter_module_messages.pack_msg_sample_freq_tune(self.module_identifier, fs_ppm_offsets)
                         self.rtl_daq_socket.send(msg_byte_array)
                         reply = self.rtl_daq_socket.recv()
-                        self.logger.info(f"Received reply: {reply}")
+                        self.logger.debug(f"Received reply: {reply}")
                         self.last_update_ind=self.iq_header.cpi_index
                         self.current_state = "STATE_FRAC_SYNC_WAIT"
                     else:
@@ -785,7 +772,6 @@ def copy_iq(iq_samples_in, iq_samples_out, M):
         iq_samples_out[m,:] = iq_samples_in[m,:]
 
     return iq_samples_out
-
 
 
 if __name__ == '__main__':
