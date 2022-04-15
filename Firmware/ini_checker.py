@@ -165,28 +165,6 @@ def check_ini(parameters, en_hw_check=True):
         if en_hw_check and not int(daq_params['ctr_channel_serial_no']) in serials:
             error_list.append("Invalid control channel serial number. Available serial numbers: {0}, Currrently set:{1}".format(serials, daq_params['ctr_channel_serial_no']))
 
-
-    """
-    --------------------------------
-        | SQUELCH | Parameter group
-    --------------------------------
-    """
-
-    squelch_params = parameters['squelch']
-
-    if not chk_int(squelch_params['en_squelch']):
-        error_list.append("Squelch enable must be 0 or 1. Currently it is: '{0}' ".format(squelch_params['en_squelch']))
-    else:
-        if not int(squelch_params['en_squelch']) in [0,1]:
-            error_list.append("Squelch enable must be 0 or 1. Currently it is: '{0}' ".format(squelch_params['en_squelch']))
-
-    if not chk_float(squelch_params['amplitude_threshold']):
-        error_list.append("Squelch amplitude threshold must be a float in a range of 0-1. Currently it is: '{0}' ".format(squelch_params['amplitude_threshold']))
-    else:
-        if float(squelch_params['amplitude_threshold']) < 0 or float(squelch_params['amplitude_threshold']) > 1:
-            error_list.append("Valid log level range is: 0-5. Currently it is: '{0}' ".format(squelch_params['amplitude_threshold']))
-
-
     """
     --------------------------------------
         | PRE PROCESSING | Parameter group

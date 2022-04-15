@@ -47,9 +47,7 @@ class HWC():
         self.logger = logging.getLogger(__name__)
         self.log_level=0 # Set from the ini file        
         self.module_identifier = 6 # Inter-module message module identifier
-        self.sqcf_name = "_data_control/squelch_control_fifo"
         self.track_lock_ctr_fname = "_data_control/iq_track_lock"
-        self.squelch_ctr_fifo = None
         self.track_lock_ctr_fd = None
         self.in_shmem_iface = None
         # Gain index:       0  1   2   3   4   5   6    7    8    9   10   11   12   13   14   15   16   17   18   19   20   21   22   23   24   25   26   27   28
@@ -63,7 +61,6 @@ class HWC():
         self.N_proc = 2**13
         self.iq_mod = None
         self.en_adpis= 0 # Enables or Disables of the ADPIS hardware usage 
-        self.en_squelch = 0 # Enables or Disables of the Squelch module usage 
         self.gains=[0]*self.M  # Initial gain values (Indices, not exact values!)
         self.noise_source_state = False
         self.gain_tune_states=[False]*self.M
@@ -83,8 +80,6 @@ class HWC():
 
         self.require_track_lock_intervention = True
         self.rf_center_frequency = 1
-        self.squelch_threshold = 0
-        self.current_squelch_threshold = 0
 
         # Overwrite default configuration
         self._read_config_file("daq_chain_config.ini")
@@ -139,8 +134,7 @@ class HWC():
         self.max_sync_fails = parser.getint('calibration','maximum_sync_fails')
         self.cal_frame_burst_size = parser.getint('calibration','cal_frame_burst_size')
         self.cal_frame_interval = parser.getint('calibration','cal_frame_interval')
-        self.gain_lock_interval = parser.getint('calibration','gain_lock_interval')
-        self.squelch_threshold = parser.getfloat('squelch','amplitude_threshold')        
+        self.gain_lock_interval = parser.getint('calibration','gain_lock_interval')     
         
         if parser.getint('calibration', 'unified_gain_control'):
             self.unified_gain_control=1
@@ -154,10 +148,6 @@ class HWC():
             self.en_adpis=1
         else:
             self.en_adpis=0
-        if parser.getint('squelch','en_squelch'):
-            self.en_squelch=True
-        else:
-            self.en_squelch = False
         if parser.getint('calibration','require_track_lock_intervention'):
             self.require_track_lock_intervention=True
         else:
@@ -207,8 +197,6 @@ class HWC():
 
         # Open control FIFOs
         try:            
-            if self.en_squelch:
-                self.squelch_ctr_fifo  = open(self.sqcf_name, 'w+b', buffering=0)                
             self.track_lock_ctr_fd = open(self.track_lock_ctr_fname, 'r')
         except OSError as err:
             self.logger.critical("OS error: {0}".format(err))
@@ -241,10 +229,7 @@ class HWC():
     def close(self):
         """
             Close the communication and data interfaces that are opened during the start of the module
-        """ 
-        if self.en_squelch and (self.squelch_ctr_fifo is not None):
-            self.squelch_ctr_fifo.close()
-        
+        """         
         if self.track_lock_ctr_fd is not None:
             self.track_lock_ctr_fd.close()
         
@@ -275,7 +260,7 @@ class HWC():
         msg_byte_array = inter_module_messages.pack_msg_set_gain(self.module_identifier, gains)
         self.rtl_daq_socket.send(msg_byte_array)
         reply = self.rtl_daq_socket.recv()
-        self.logger.info(f"Received reply: {reply}")        
+        self.logger.debug(f"Received reply: {reply}")        
     def _tune_gains(self):
         """
             Performs IF gain tuning in order to maximaze the SINR in each channels by
@@ -309,28 +294,6 @@ class HWC():
                         self.gain_tune_states = [False]*self.M 
         self._change_gains()
 
-    def _control_squelch_thresold(self, threshold):
-        """
-            Sends and control command to the squelch module to update the amplitude threshold level
-
-            Parameters:
-            -----------
-                :param: threshold: New amplitude threshold value, must be in the range of [0..1]
-                :type: threshold: float
-            
-            Returns:
-            -------                
-               -1: Amplitude threshold is out of range 
-        """
-        if self.en_squelch:
-            if 0>threshold or threshold>1:
-                self.logger.error("Amplitude threshold is out of range")
-                return -1
-            else:
-                self.squelch_ctr_fifo.write('t'.encode('ascii'))
-                self.squelch_ctr_fifo.write(pack("f", threshold))            
-                self.current_squelch_threshold = threshold # Store current threshold level
-
     def _handle_control_reqest(self, command, params):
         """
             Handles external control requests that has arrived thorugh the control Ethernet interface
@@ -344,19 +307,15 @@ class HWC():
             :type: params  : python list
 
             Implemented valid command strings:
-            - STHU: Sets the thresold level of the squelch module
             - FREQ: Changes the center frequency of the receiver
             - GAIN: Sets the IF gain values
 
         """
-        if command == "STHU":
-            self.squelch_threshold = params[0]
-            self._control_squelch_thresold(params[0])
-        elif command == "FREQ":            
+        if command == "FREQ":            
             msg_byte_array = inter_module_messages.pack_msg_rf_tune(self.module_identifier, params[0])
             self.rtl_daq_socket.send(msg_byte_array)
             reply = self.rtl_daq_socket.recv()
-            self.logger.info(f"Received reply: {reply}")
+            self.logger.debug(f"Received reply: {reply}")
         elif command == "GAIN":
             try:
                 if self.noise_source_state: # The noise source is turned on, we are storing only the gains
@@ -395,7 +354,7 @@ class HWC():
             msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, True)
             self.rtl_daq_socket.send(msg_byte_array)
             reply = self.rtl_daq_socket.recv()
-            self.logger.info(f"Received reply: {reply}")                 
+            self.logger.debug(f"Received reply: {reply}")                 
             self.noise_source_state = True # Next state
             self.current_state = "STATE_NOISE_CTR_WAIT"
         else:
@@ -403,7 +362,7 @@ class HWC():
             msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, False)
             self.rtl_daq_socket.send(msg_byte_array)
             reply = self.rtl_daq_socket.recv()
-            self.logger.info(f"Received reply: {reply}")
+            self.logger.debug(f"Received reply: {reply}")
             self.noise_source_state = False # Next state
 
             self.logger.info("Restore gain values after calibration")            
@@ -474,14 +433,11 @@ class HWC():
                     msg_byte_array = inter_module_messages.pack_msg_noise_source_ctr(self.module_identifier, False)
                     self.rtl_daq_socket.send(msg_byte_array)
                     reply = self.rtl_daq_socket.recv()
-                    self.logger.info(f"Received reply: {reply}")                    
-
-                    # Disarm squelch module until calibration is finished
-                    self._control_squelch_thresold(0)
+                    self.logger.debug(f"Received reply: {reply}")                    
 
                     # TODO: Set initial ADPIS values here
-                    #self.current_state = "STATE_GAIN_CTR_WAIT"
-                    self.current_state = "STATE_IQ_CAL" # CARL DISABLE gain tuning
+                    self.current_state = "STATE_GAIN_CTR_WAIT" # Enabled for testing
+                    #self.current_state = "STATE_IQ_CAL" # CARL DISABLE gain tuning
                 #
                 #------------------------------------------>
                 #   
@@ -545,15 +501,6 @@ class HWC():
                                        track_lock_approval = False                               
                                if track_lock_approval:
                                    self._control_noise_source(noise_source_state=False)
-                        # Arm / Disarm squelch module depending on the sync state                            
-                        if self.en_squelch:
-                            if self.iq_header.sync_state < 6: # System is not in synced state
-                                if self.current_squelch_threshold != 0: # Squelch module is armed 
-                                    self._control_squelch_thresold(0) # Disarming
-                            else: # System is in synced state
-                                if self.current_squelch_threshold == 0 and self.current_squelch_threshold != self.squelch_threshold: # Squelch module is disarmed
-                                    self._control_squelch_thresold(self.squelch_threshold) # Arming
-
                        
                     # --> Burst calibration frames
                     if self.cal_track_mode == 2: 
