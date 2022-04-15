@@ -6,11 +6,11 @@ Should also be compatible with other systems including x86, but a system with at
 
 ## Installation
 
-This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit Beta 2021-10-30-raspios-bullseye-arm64-lite.
+This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit.
 
 We recommend starting with a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/
 
-Burn the image to an 8GB or larger SD Card and login with pi/raspberry. Set up WiFi with wpa_supplicant, enable SSH and change the hostname to "krakensdr" if desired via raspi-config. For security, don't forget to change the default default the password too.
+Burn the image to an 8GB or larger SD Card, connect a monitor and create a login (newer RaspiOS no longer has the default pi user). Set up WiFi with `sudo raspi-config`, enable SSH and change the hostname to "krakensdr" if desired via raspi-config.
 
 1. Install build dependencies
 ```bash
