@@ -172,11 +172,6 @@ class delaySynchronizer():
         else:
             self.en_iq_cal = False
         
-        if parser.getint('squelch', 'en_squelch'):
-            self.in_shmem_iface_name = "squelch_out"
-        else:
-            self.in_shmem_iface_name = "decimator_out"
-        
         self.log_level=(parser.getint('daq', 'log_level')*10)
 
         # Convert to voltage ratio
@@ -188,7 +183,7 @@ class delaySynchronizer():
             Opens the communication interfaces of the module including the
             input and output shared memory interfaces and the FIFO control interface.
             
-            Input shared memory interface: IQ data from the decimator/squelch module
+            Input shared memory interface: IQ data from the decimator module
             Out shared memory interfaces: Towards the IQ Server or the DSP module and to
             the Hardware Controller module.
 
@@ -206,7 +201,7 @@ class delaySynchronizer():
         self.rtl_daq_socket.connect("tcp://localhost:1130")
         
         # Open shared memory interface to receive data from the decimator
-        self.in_shmem_iface = inShmemIface(self.in_shmem_iface_name)
+        self.in_shmem_iface = inShmemIface("decimator_out")
         if not self.in_shmem_iface.init_ok:
             self.logger.critical("Shared memory (Decimator) initialization failed, exiting..")
             return -1
