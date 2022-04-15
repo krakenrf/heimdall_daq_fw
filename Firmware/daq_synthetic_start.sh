@@ -21,12 +21,6 @@ fi
 en_squelch=$(awk -F "=" '/en_squelch/ {print $2}' daq_chain_config.ini)
 out_data_iface_type=$(awk -F "=" '/out_data_iface_type/ {print $2}' daq_chain_config.ini)
 
-# -> Receiver control <-
-rec_cfn=_data_control/rec_control_fifo
-
-# -> Sync control <-
-sync_cfn=_data_control/sync_control_fifo
-
 # -> Squelch control <-
 squelch_cfn=_data_control/squelch_control_fifo
 
@@ -46,12 +40,8 @@ rm _data_control/bw_delay_sync_iq 2> /dev/null
 rm _data_control/fw_delay_sync_hwc 2> /dev/null
 rm _data_control/bw_delay_sync_hwc 2> /dev/null
 
-rm $sync_cfn 2> /dev/null
-rm $rec_cfn 2> /dev/null
 rm $squelch_cfn 2> /dev/null
 
-mkfifo $sync_cfn
-mkfifo $rec_cfn
 mkfifo $squelch_cfn
 
 mkfifo _data_control/fw_decimator_in
@@ -89,7 +79,6 @@ fi
 # Start main program chain -Thread 0 Normal (non squelch mode)
 echo "Starting DAQ Subsystem with synthetic data source"
 python3 _testing/test_data_synthesizer.py 2>_logs/synthetic.log | \
-_daq_core/sync.out 2>_logs/sync.log | \
 _daq_core/rebuffer.out 0 2> _logs/rebuffer.log &
 
 # Decimator - Thread 1
