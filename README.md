@@ -15,17 +15,16 @@ Burn the image to an 8GB or larger SD Card and login with pi/raspberry. Set up W
 1. Install build dependencies
 ```bash
 sudo apt update
-sudo apt install build-essential git cmake libusb-1.0-0-dev lsof
-sudo apt install libzmq3-dev
+sudo apt install build-essential git cmake libusb-1.0-0-dev lsof libzmq3-dev
 ```
 
-If you are using a KerberosSDR with the third party switches by Corey Koval, or equivalent:
+If you are using a KerberosSDR on a Raspberry Pi 4 with the third party switches by Corey Koval, or an equivalent switch board:
 
 ```
 sudo apt install pigpio
 ```   
    
-2. Install RTL-SDR kernel driver
+2. Install custom KrakenRF RTL-SDR kernel driver
 ```bash    
 git clone https://github.com/krakenrf/librtlsdr
 cd librtlsdr
