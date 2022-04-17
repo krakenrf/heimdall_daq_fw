@@ -245,12 +245,6 @@ def check_ini(parameters, en_hw_check=True):
         if en_hw_check and int(cal_params['std_ch_ind']) > device_count-1:
             error_list.append("Standard channel index is higher than the number of available channels. Currently it is: '{0}' , available: 0..{1}".format(cal_params['std_ch_ind'], device_count-1))
 
-    if not chk_int(cal_params['en_frac_cal']):
-        error_list.append("Fractional sample delay enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_frac_cal']))
-    else:
-        if not int(cal_params['en_frac_cal']) in [0,1]:
-            error_list.append("Fractional sample delay enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_frac_cal']))
-
     if not chk_int(cal_params['en_iq_cal']):
         error_list.append("IQ calibration enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_iq_cal']))
     else:
