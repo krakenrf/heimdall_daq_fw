@@ -93,7 +93,7 @@ class delaySynchronizer():
         self.sync_failed_cntr_total = 0
 
         self.MIN_FS_PPM_OFFSET = 0.0000001
-        self.MAX_FS_PPM_OFFSET = 0.01 # CARL: Changed to 0.01
+        self.MAX_FS_PPM_OFFSET = 0.01
         self.INT_FS_TUNE_GAIN  = np.array([[100, 2, 0],[50, 25, 15]]) #Reference table for tuning - [Delay limits] [Tune gains]
         self.FRAC_FS_TUNE_GAIN = 20
 
@@ -526,8 +526,6 @@ class delaySynchronizer():
                             sample_sync_flag = False # Misalling detected
                             delay_update_flag=1
                         self.logger.debug("Channel {:d}, delay: {:d}, tune gain: {:d} ppm-offset: {:.7f}, ".format(m, self.delays[m], fs_tune_gain_m, fs_ppm_offsets[m]))
-
-                        print("Channel {:d}, delay: {:d}, tune gain: {:d} ppm-offset: {:.7f}, ".format(m, self.delays[m], fs_tune_gain_m, fs_ppm_offsets[m]))
 
                     # Set time delay 
                     if delay_update_flag:
