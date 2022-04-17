@@ -194,7 +194,8 @@ make
 ## Intel Optimizations:
 If you are running a machine with an Intel CPU, you can install the highly optimized Intel MKL BLAS and Intel SVML libraries for a significant speed boost.  
 
-```conda activate kraken
+```
+conda activate kraken
 conda install "blas=*=mkl"
 conda install -c numba icc_rt
 ```
