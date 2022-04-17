@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <assert.h>
+#include <math.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -744,6 +745,7 @@ int main( int argc, char** argv )
             {   
                 if(fs_reset_cntr == 0) /* Set corrections*/
                 {
+
                     for( int i=0; i<ch_no; i++)
                     {
                         rtl_rec = &rtl_receivers[i];
@@ -758,9 +760,12 @@ int main( int argc, char** argv )
                     for( int i=0; i<ch_no; i++) /* Tuning stage has been completed - reset corrections*/
                     {
                         rtl_rec = &rtl_receivers[i];
-                        if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, 0) !=0)
-                            {log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));}                        
-                        else{log_info("Sampling frequency correction set at ch: %d, value %.8f",i, 0);}
+                        if(fabs(new_fs_corrections[i]) < 0.008) // Keep it running if the correction required is huge
+                        {
+                           if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, 0) !=0)
+                               {log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));}                        
+                           else{log_info("Sampling frequency correction set at ch: %d, value %.8f",i, 0);}
+                        }
                     }
                     fs_correction_flag=0;
                 }
