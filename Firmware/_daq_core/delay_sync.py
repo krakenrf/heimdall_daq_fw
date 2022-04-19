@@ -79,7 +79,8 @@ class delaySynchronizer():
         self.N_proc = 2**18        
         self.std_ch_ind = 0 # Index of standard channel. All channels are matched in delay to this one        
         self.en_iq_cal = False # Enables amlitude and phase calibration
-                
+        self.en_iq_cal_adjust = False
+
         self.min_corr_peak_dyn_range = 20 # [dB]
         self.corr_peak_offset = 100 # [sample]
         self.cal_track_mode = 0        
@@ -177,6 +178,18 @@ class delaySynchronizer():
         # Convert to voltage ratio
         self.amp_diff_tolerance = 10**(self.amp_diff_tolerance/20)
         
+        # External IQ calibration adjustment
+        iq_adjust_amplitude_str=parser.get('calibration','iq_adjust_amplitude')
+        iq_adjust_amplitude_str = iq_adjust_amplitude_str.split(',')
+        iq_adjust_amplitude     = list(map(float, iq_adjust_amplitude_str))
+        iq_adjust_amplitude     = 10**(np.array(iq_adjust_amplitude)/20) # Convert to voltage relations
+        
+        iq_adjust_phase_str=parser.get('calibration','iq_adjust_phase')
+        iq_adjust_phase_str = iq_adjust_amplitude_str.split(',')
+        iq_adjust_phase     = list(map(float, iq_adjust_phase))
+        iq_adjust_phase     = np.deg2rad(np.array(iq_adjust_phase))  # Convert deg to radian
+
+        iq_adjust = iq_adjust_amplitude * np.exp(1j*iq_adjust_phase)
         return 0
     def open_interfaces(self):
         """
