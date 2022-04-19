@@ -20,17 +20,7 @@ fi
 sysctl -w kernel.sched_rt_runtime_us=-1
 
 # Read config ini file
-en_squelch=$(awk -F "=" '/en_squelch/ {print $2}' daq_chain_config.ini)
 out_data_iface_type=$(awk -F "=" '/out_data_iface_type/ {print $2}' daq_chain_config.ini)
-
-# -> Receiver control <-
-rec_cfn=_data_control/rec_control_fifo
-
-# -> Sync control <-
-sync_cfn=_data_control/sync_control_fifo
-
-# -> Squelch control <-
-squelch_cfn=_data_control/squelch_control_fifo
 
 # (re) create control FIFOs
 rm _data_control/fw_decimator_in 2> /dev/null
@@ -39,31 +29,17 @@ rm _data_control/bw_decimator_in 2> /dev/null
 rm _data_control/fw_decimator_out 2> /dev/null
 rm _data_control/bw_decimator_out 2> /dev/null
 
-rm _data_control/fw_squelch_out 2> /dev/null
-rm _data_control/bw_squelch_out 2> /dev/null
-
 rm _data_control/fw_delay_sync_iq 2> /dev/null
 rm _data_control/bw_delay_sync_iq 2> /dev/null
 
 rm _data_control/fw_delay_sync_hwc 2> /dev/null
 rm _data_control/bw_delay_sync_hwc 2> /dev/null
 
-rm $sync_cfn 2> /dev/null
-rm $rec_cfn 2> /dev/null
-rm $squelch_cfn 2> /dev/null
-
-mkfifo $sync_cfn
-mkfifo $rec_cfn
-mkfifo $squelch_cfn
-
 mkfifo _data_control/fw_decimator_in
 mkfifo _data_control/bw_decimator_in
 
 mkfifo _data_control/fw_decimator_out
 mkfifo _data_control/bw_decimator_out
-
-mkfifo _data_control/fw_squelch_out
-mkfifo _data_control/bw_squelch_out
 
 mkfifo _data_control/fw_delay_sync_iq
 mkfifo _data_control/bw_delay_sync_iq
@@ -124,15 +100,10 @@ fi
 # Start main program chain -Thread 0 Normal (non squelch mode)
 echo "Starting DAQ Subsystem"
 chrt -f 99 _daq_core/rtl_daq.out 2> _logs/rtl_daq.log | \
-chrt -f 99 _daq_core/sync.out 2>_logs/sync.log | \
 chrt -f 99 _daq_core/rebuffer.out 0 2> _logs/rebuffer.log &
 
 # Decimator - Thread 1
 chrt -f 99 _daq_core/decimate.out 2> _logs/decimator.log &
-
-if [ $en_squelch = 1 ]; then
-    chrt -f 99 _daq_core/squelch.out 0 2> _logs/squelch.log &
-fi
 
 # Delay synchronizer - Thread 2
 chrt -f 99 python3 _daq_core/delay_sync.py 2> _logs/delay_sync.log &

@@ -165,28 +165,6 @@ def check_ini(parameters, en_hw_check=True):
         if en_hw_check and not int(daq_params['ctr_channel_serial_no']) in serials:
             error_list.append("Invalid control channel serial number. Available serial numbers: {0}, Currrently set:{1}".format(serials, daq_params['ctr_channel_serial_no']))
 
-
-    """
-    --------------------------------
-        | SQUELCH | Parameter group
-    --------------------------------
-    """
-
-    squelch_params = parameters['squelch']
-
-    if not chk_int(squelch_params['en_squelch']):
-        error_list.append("Squelch enable must be 0 or 1. Currently it is: '{0}' ".format(squelch_params['en_squelch']))
-    else:
-        if not int(squelch_params['en_squelch']) in [0,1]:
-            error_list.append("Squelch enable must be 0 or 1. Currently it is: '{0}' ".format(squelch_params['en_squelch']))
-
-    if not chk_float(squelch_params['amplitude_threshold']):
-        error_list.append("Squelch amplitude threshold must be a float in a range of 0-1. Currently it is: '{0}' ".format(squelch_params['amplitude_threshold']))
-    else:
-        if float(squelch_params['amplitude_threshold']) < 0 or float(squelch_params['amplitude_threshold']) > 1:
-            error_list.append("Valid log level range is: 0-5. Currently it is: '{0}' ".format(squelch_params['amplitude_threshold']))
-
-
     """
     --------------------------------------
         | PRE PROCESSING | Parameter group
@@ -266,12 +244,6 @@ def check_ini(parameters, en_hw_check=True):
             error_list.append("Standard channel index must be a non negative integer. Currently it is: '{0}' ".format(cal_params['std_ch_ind']))
         if en_hw_check and int(cal_params['std_ch_ind']) > device_count-1:
             error_list.append("Standard channel index is higher than the number of available channels. Currently it is: '{0}' , available: 0..{1}".format(cal_params['std_ch_ind'], device_count-1))
-
-    if not chk_int(cal_params['en_frac_cal']):
-        error_list.append("Fractional sample delay enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_frac_cal']))
-    else:
-        if not int(cal_params['en_frac_cal']) in [0,1]:
-            error_list.append("Fractional sample delay enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_frac_cal']))
 
     if not chk_int(cal_params['en_iq_cal']):
         error_list.append("IQ calibration enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_iq_cal']))

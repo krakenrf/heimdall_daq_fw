@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <assert.h>
+#include <math.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -56,7 +57,7 @@
 #define NUM_BUFF 8  // Number of buffers used in the circular, coherent read buffer
 #define CFN "_data_control/rec_control_fifo" // Receiver control FIFO name 
 #define ASYNC_BUF_NUMBER 12// Number of buffers used by the asynchronous read 
-
+#define FS_CORRECTION_KEEP_LIMIT 0.008 // Above this ppm offset the tuning is not terminated after 1 cal. frame
 #define INI_FNAME "daq_chain_config.ini"
 
 /*
@@ -65,7 +66,7 @@
  * but sends out dummy frames only, until NO_DUMMY_FRAMES number of
  * frames have not been sent out.
  */
-#define NO_DUMMY_FRAMES 8
+#define NO_DUMMY_FRAMES 5
 int en_dummy_frame = 0; 
 int dummy_frame_cntr = 0;
 /* ------> DUMMY FRAMES <------*/
@@ -744,6 +745,7 @@ int main( int argc, char** argv )
             {   
                 if(fs_reset_cntr == 0) /* Set corrections*/
                 {
+
                     for( int i=0; i<ch_no; i++)
                     {
                         rtl_rec = &rtl_receivers[i];
@@ -758,9 +760,12 @@ int main( int argc, char** argv )
                     for( int i=0; i<ch_no; i++) /* Tuning stage has been completed - reset corrections*/
                     {
                         rtl_rec = &rtl_receivers[i];
-                        if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, 0) !=0)
-                            {log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));}                        
-                        else{log_info("Sampling frequency correction set at ch: %d, value %.8f",i, 0);}
+                        if(fabs(new_fs_corrections[i]) < FS_CORRECTION_KEEP_LIMIT) // Keep it running if the correction required is huge
+                        {
+                           if (rtlsdr_set_sample_freq_correction_f(rtl_rec->dev, 0) !=0)
+                               {log_error("Failed to set new sampling frequency correction, value: %s", strerror(errno));}                        
+                           else{log_info("Sampling frequency correction set at ch: %d, value %.8f",i, 0);}
+                        }
                     }
                     fs_correction_flag=0;
                 }
@@ -788,8 +793,8 @@ int main( int argc, char** argv )
                     log_info("Noise source turned on ");
                 }
                 else if (noise_source_state == 0){
-		    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 0);
-		    //rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 0);
+                    //rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
                     //rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
                     log_info("Noise source turned off ");
                     // Use pigpio to set Pi GPIO for third party Kerberos CKOVAL switches
