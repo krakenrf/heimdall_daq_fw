@@ -308,6 +308,22 @@ def check_ini(parameters, en_hw_check=True):
         if int(cal_params['maximum_sync_fails']) < 1:
             error_list.append("Maximum allowed sync check fails must be a positive integer. Currently it is: '{0}' ".format(cal_params['maximum_sync_fails']))
 
+    iq_adjust_amplitude_str = cal_params['iq_adjust_amplitude']
+    iq_adjust_amplitude_str = iq_adjust_amplitude_str.split(',')
+    for amplitude_str in iq_adjust_amplitude_str:
+        if not chk_float(amplitude_str):
+            error_list.append("IQ amplitude adjust value must be a list of floats, Currently it is: '{0}' ".format(iq_adjust_amplitude_str))
+    if en_hw_check and len(iq_adjust_amplitude_str) != device_count-1:
+        error_list.append("The number of specified IQ amplitude adjustment values does not much with available channels. It should contain channel count-1  values. Set:{0}, available:{1}".format(len(iq_adjust_amplitude_str), device_count))
+
+    iq_adjust_phase_str = cal_params['iq_adjust_phase']
+    iq_adjust_phase_str = iq_adjust_phase_str.split(',')
+    for phase_str in iq_adjust_phase_str:
+        if not chk_float(phase_str):
+            error_list.append("IQ phase adjust value must be a list of floats, Currently it is: '{0}' ".format(iq_adjust_phase_str))
+    if en_hw_check and len(iq_adjust_phase_str) != device_count-1:
+        error_list.append("The number of specified IQ phase adjustment values does not much with available channels. It should contain channel count-1  values. Set:{0}, available:{1}".format(len(iq_adjust_phase_str), device_count))
+
     """
     --------------------------------
         | ADPIS | Parameter group

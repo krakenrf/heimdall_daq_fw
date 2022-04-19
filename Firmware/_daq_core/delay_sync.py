@@ -79,7 +79,7 @@ class delaySynchronizer():
         self.N_proc = 2**18        
         self.std_ch_ind = 0 # Index of standard channel. All channels are matched in delay to this one        
         self.en_iq_cal = False # Enables amlitude and phase calibration
-        self.en_iq_cal_adjust = False
+        self.iq_adjust = np.zeros(self.M, dtype=np.complex64)
 
         self.min_corr_peak_dyn_range = 20 # [dB]
         self.corr_peak_offset = 100 # [sample]
@@ -185,11 +185,14 @@ class delaySynchronizer():
         iq_adjust_amplitude     = 10**(np.array(iq_adjust_amplitude)/20) # Convert to voltage relations
         
         iq_adjust_phase_str=parser.get('calibration','iq_adjust_phase')
-        iq_adjust_phase_str = iq_adjust_amplitude_str.split(',')
-        iq_adjust_phase     = list(map(float, iq_adjust_phase))
+        iq_adjust_phase_str = iq_adjust_phase_str.split(',')
+        iq_adjust_phase     = list(map(float, iq_adjust_phase_str))
         iq_adjust_phase     = np.deg2rad(np.array(iq_adjust_phase))  # Convert deg to radian
 
-        iq_adjust = iq_adjust_amplitude * np.exp(1j*iq_adjust_phase)
+        self.iq_adjust = iq_adjust_amplitude * np.exp(1j*iq_adjust_phase)
+        self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
+        self.logger.info(f"IQ adjustment vector: {self.iq_adjust}")
+
         return 0
     def open_interfaces(self):
         """
@@ -484,7 +487,8 @@ class delaySynchronizer():
                 if self.current_state == "STATE_INIT": 
                     sync_state = 1
                     # Reset IQ corrections
-                    self.iq_corrections = np.ones(self.M, dtype=np.complex64) 
+                    self.iq_corrections    = np.ones(self.M, dtype=np.complex64) 
+                    self.iq_corrections[:] = self.iq_adjust[:]
                     # Calibration frame                    
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL: 
                         self.current_state = "STATE_SAMPLE_CAL"
@@ -605,6 +609,7 @@ class delaySynchronizer():
                     
                     if self.en_iq_cal:
                         dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
+                        iq_diffs *= self.iq_adjust[:]
                         
                         if (dyn_ranges < self.min_corr_peak_dyn_range).any():
                             self.logger.warning("Correlation peak dynamic range is insufficient to perform calibration")
@@ -647,6 +652,8 @@ class delaySynchronizer():
                     # Wait here until the calibration frame is turned off
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_DATA: # Normal data frame
                         dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
+                        iq_diffs *= self.iq_adjust[:]
+
                         if self.cal_track_mode == 1:
                             self.iq_diff_ref[:] = iq_diffs[:]
                         self.current_state = "STATE_TRACK"
@@ -665,7 +672,7 @@ class delaySynchronizer():
                        (self.cal_track_mode == 2 and self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL):
 
                         dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
-
+                        iq_diffs *= self.iq_adjust[:]
                         # Check sample sync loss
                         if (dyn_ranges < self.min_corr_peak_dyn_range).any():
                             self.logger.warning("Sample sync may lost")
