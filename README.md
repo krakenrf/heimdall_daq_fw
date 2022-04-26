@@ -60,6 +60,7 @@ make
 
 For 32-bit ARM systems:
 ```bash
+cd
 git clone https://github.com/krakenrf/Ne10
 cd Ne10
 mkdir build
