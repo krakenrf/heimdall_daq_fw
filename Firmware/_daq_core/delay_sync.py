@@ -180,12 +180,12 @@ class delaySynchronizer():
         
         # External IQ calibration adjustment
         iq_adjust_amplitude_str=parser.get('calibration','iq_adjust_amplitude')
-        iq_adjust_amplitude_str = iq_adjust_amplitude_str.split(',')
+        iq_adjust_amplitude_str = iq_adjust_amplitude_str.split(',')[0:self.M-1]
         iq_adjust_amplitude     = list(map(float, iq_adjust_amplitude_str))
         iq_adjust_amplitude     = 10**(np.array(iq_adjust_amplitude)/20) # Convert to voltage relations
         
         iq_adjust_phase_str=parser.get('calibration','iq_adjust_phase')
-        iq_adjust_phase_str = iq_adjust_phase_str.split(',')
+        iq_adjust_phase_str = iq_adjust_phase_str.split(',')[0:self.M-1]
         iq_adjust_phase     = list(map(float, iq_adjust_phase_str))
         iq_adjust_phase     = np.deg2rad(np.array(iq_adjust_phase))  # Convert deg to radian
 
