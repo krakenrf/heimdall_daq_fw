@@ -54,6 +54,7 @@
 typedef struct
 {
     int num_ch;
+    int daq_buffer_size;
     int cpi_size;
     int cal_size;
     int decimation_ratio;
@@ -72,6 +73,8 @@ static int handler(void* conf_struct, const char* section, const char* name,
     #define MATCH(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
     if (MATCH("hw", "num_ch")) 
     {pconfig->num_ch = atoi(value);}
+    else if (MATCH("daq", "daq_buffer_size"))
+    {pconfig->daq_buffer_size = atoi(value);}    
     else if (MATCH("pre_processing", "cpi_size")) 
     {pconfig->cpi_size = atoi(value);}
     else if (MATCH("calibration", "corr_size")) 
@@ -238,7 +241,7 @@ int main(int argc, char **argv)
             log_warn("Frame index missmatch. Expected %d <--> %d Received",expected_frame_index,iq_header->daq_block_index);
             expected_frame_index = iq_header->daq_block_index;
         }
-        expected_frame_index += dec;
+        expected_frame_index += (config.daq_buffer_size*config.decimation_ratio)/config.cpi_size;
         cpi_index ++;
         
         /*Acquire buffer from the sink block*/
