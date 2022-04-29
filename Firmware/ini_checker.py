@@ -257,7 +257,7 @@ def check_ini(parameters, en_hw_check=True):
     if not chk_int(cal_params['gain_lock_interval']):
         error_list.append("Gain lock interval must be a positive integer. Currently it is: '{0}' ".format(cal_params['gain_lock_interval']))
     else:
-        if int(cal_params['gain_lock_interval']) < 1:
+        if int(cal_params['gain_lock_interval']) < 0:
             error_list.append("Gain lock interval must be a positive integer. Currently it is: '{0}' ".format(cal_params['gain_lock_interval']))
 
     if not chk_int(cal_params['unified_gain_control']):
