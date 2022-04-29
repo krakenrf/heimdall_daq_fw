@@ -254,11 +254,17 @@ def check_ini(parameters, en_hw_check=True):
     if not cal_params['amplitude_cal_mode'] in ['default','disabled','channel_power']:
         error_list.append("Invalid amplitude calibration mode. Valid options: 'default','disabled','channel_power', Currently it is: '{0}'".format(cal_params['amplitude_cal_mode']))
     
+    if not chk_int(cal_params['en_gain_tune_init']):
+        error_list.append("Initial gain tune enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_gain_tune_init']))
+    else:
+        if not int(cal_params['en_gain_tune_init']) in [0,1]:
+            error_list.append("Initial gain tune enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['en_gain_tune_init']))
+
     if not chk_int(cal_params['gain_lock_interval']):
-        error_list.append("Gain lock interval must be a positive integer. Currently it is: '{0}' ".format(cal_params['gain_lock_interval']))
+        error_list.append("Gain lock interval must be a non negative integer. Currently it is: '{0}' ".format(cal_params['gain_lock_interval']))
     else:
         if int(cal_params['gain_lock_interval']) < 0:
-            error_list.append("Gain lock interval must be a positive integer. Currently it is: '{0}' ".format(cal_params['gain_lock_interval']))
+            error_list.append("Gain lock interval must be a non negative integer. Currently it is: '{0}' ".format(cal_params['gain_lock_interval']))
 
     if not chk_int(cal_params['unified_gain_control']):
         error_list.append("Unified gain control enable must be 0 or 1. Currently it is: '{0}' ".format(cal_params['unified_gain_control']))
@@ -321,12 +327,6 @@ def check_ini(parameters, en_hw_check=True):
     else:
         if not int(adpis_params['en_adpis']) in [0,1]:
             error_list.append("ADPIS enable must be 0 or 1. Currently it is: '{0}' ".format(adpis_params['en_adpis']))
-
-    if not chk_int(adpis_params['en_gain_tune_init']):
-        error_list.append("Initial gain tune enable must be 0 or 1. Currently it is: '{0}' ".format(adpis_params['en_gain_tune_init']))
-    else:
-        if not int(adpis_params['en_gain_tune_init']) in [0,1]:
-            error_list.append("Initial gain tune enable must be 0 or 1. Currently it is: '{0}' ".format(adpis_params['en_gain_tune_init']))
 
     if not chk_int(adpis_params['adpis_proc_size']):
         error_list.append("ADPIS processing size must be a positive integer. Currently it is: '{0}' ".format(adpis_params['adpis_proc_size']))
