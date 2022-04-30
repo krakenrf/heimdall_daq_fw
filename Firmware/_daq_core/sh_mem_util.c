@@ -39,7 +39,6 @@
 #define CHK_ZERO(r, e)    if(r == 0)  {return e;}
 #define CHK_READ(r, s ,e) if(r != s)  {return e;}
 #define CHK_DATA_PIPE(fd, e) if(feof(fd)) {return e;}
-#define INGORE_FRAME_DROP_WARNINGS 1
 
 unsigned char char_init_ready[1]={INIT_READY}; 
 unsigned char char_a_buff_ready[1]={A_BUFF_READY}; 

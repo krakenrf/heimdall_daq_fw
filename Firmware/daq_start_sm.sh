@@ -122,7 +122,7 @@ fi
 
 # IQ Eth sink used for testing
 #sleep 3
-#python3 _daq_core/iq_eth_sink.py 2>_logs/iq_eth_sink.log &
+python3 _daq_core/iq_eth_sink.py 2>_logs/iq_eth_sink.log &
 
 echo -e "      )  (     "
 echo -e "      (   ) )  "
