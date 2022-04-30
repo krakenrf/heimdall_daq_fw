@@ -16,7 +16,7 @@ echo -e "\e[33mConfig file check bypassed [ WARNING ]\e[39m"
 #      echo -e "\e[91mConfig file check [ FAIL ]\e[39m"
 #      echo $res
 #      exit
-f#i
+#fi
 
 sysctl -w kernel.sched_rt_runtime_us=-1
 
