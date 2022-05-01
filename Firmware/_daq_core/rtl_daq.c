@@ -603,7 +603,17 @@ int main( int argc, char** argv )
             rtl_rec = &rtl_receivers[i];
             if (rtl_rec->buff_ind <= read_buff_ind)
             {data_ready = 0; break;}      
-        }               
+        
+            if((rtl_rec->buff_ind - read_buff_ind) >= NUM_BUFF)
+            {log_warn("Circular buffer may overrun. Consider increasing the number of buffers. RTL Buff index: %d, read_buff_ind: %d", rtl_rec->buff_ind, read_buff_ind);}
+            if(rtl_rec->buff_ind % NUM_BUFF == read_buff_ind % NUM_BUFF) 
+            { 
+                log_warn("Likely race condition. Skipping data aquicision. RTL Buff index: %d, read_buff_ind: %d", rtl_rec->buff_ind, read_buff_ind);           
+                data_ready = 0;
+                break;
+            }
+        }
+                         
         if (data_ready == 1)
         {
             /*
