@@ -25,9 +25,11 @@
 """
 # Import built-in modules
 import logging
+from ntpath import join
 import sys
 from struct import pack
 from time import sleep
+import os.path.join
 
 # Import third-party modules
 import numpy as np
@@ -36,6 +38,7 @@ from scipy import fft
 from scipy.optimize import curve_fit
 from configparser import ConfigParser
 import zmq
+import skrf as rf
 
 import numba as nb
 from numba import jit, njit
@@ -78,8 +81,13 @@ class delaySynchronizer():
         # Calibration control parameters
         self.N_proc = 2**18        
         self.std_ch_ind = 0 # Index of standard channel. All channels are matched in delay to this one        
-        self.en_iq_cal = False # Enables amlitude and phase calibration
+        self.en_iq_cal = False # Enables amlitude and phase calibration        
+        # IQ calibration adjustment
         self.iq_adjust = np.zeros(self.M, dtype=np.complex64)
+        self.iq_adjust_source = "explicit-time-delay" # "explicit-time-delay" / "touchstone"
+        self.iq_adjust_amplitude = None
+        self.iq_adjust_phase = None
+        self.iq_adjust_table  = None # Frequency - Phase table for all channels 
 
         self.min_corr_peak_dyn_range = 20 # [dB]
         self.corr_peak_offset = 100 # [sample]
@@ -178,20 +186,35 @@ class delaySynchronizer():
         self.amp_diff_tolerance = 10**(self.amp_diff_tolerance/20)
         
         # External IQ calibration adjustment
-        iq_adjust_amplitude_str=parser.get('calibration','iq_adjust_amplitude')
-        iq_adjust_amplitude_str = iq_adjust_amplitude_str.split(',')[0:self.M-1]
-        iq_adjust_amplitude     = list(map(float, iq_adjust_amplitude_str))
-        iq_adjust_amplitude     = 10**(np.array(iq_adjust_amplitude)/20) # Convert to voltage relations
-        
-        iq_adjust_time_str = parser.get('calibration','iq_adjust_time_delay_ns')
-        iq_adjust_time_str = iq_adjust_time_str.split(',')[0:self.M-1]
-        iq_adjust_time     = list(map(float, iq_adjust_time_str))
-        
-        daq_rf  = parser.getint('daq', 'center_freq') # Read RF center frequency for phase offset calculation
-        iq_adjust_phase     = np.array(iq_adjust_time)*daq_rf*2*np.pi  # Convert time delay to phase         
+        self.iq_adjust_source = parser.get('calibration','iq_adjust_source')
 
-        self.iq_adjust = iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
-        self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
+        daq_rf  = parser.getint('daq', 'center_freq') # Read RF center frequency for phase offset calculation
+
+        if self.iq_adjust_source == "explicit-time-delay":
+            iq_adjust_amplitude_str = parser.get('calibration','iq_adjust_amplitude')
+            iq_adjust_amplitude_str = iq_adjust_amplitude_str.split(',')[0:self.M-1]
+            iq_adjust_amplitude     = list(map(float, iq_adjust_amplitude_str))
+            self.iq_adjust_amplitude     = 10**(np.array(iq_adjust_amplitude)/20) # Convert to voltage relations
+            
+            iq_adjust_time_str = parser.get('calibration','iq_adjust_time_delay_ns')
+            iq_adjust_time_str = iq_adjust_time_str.split(',')[0:self.M-1]
+            iq_adjust_time     = list(map(float, iq_adjust_time_str))
+
+            self.iq_adjust_phase     = np.array(iq_adjust_time)*daq_rf*2*np.pi  # Convert time delay to phase         
+
+            self.iq_adjust = self.iq_adjust_amplitude * np.exp(1j*self.iq_adjust_phase) # Assemble IQ adjustment vector
+            self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
+        elif self.iq_adjust_source == "touchstone":
+            for m in range(self.M):
+                fname = join("_calibration", f"cable_ch{m}.s1p")
+                net = rf.Network(fname)
+                if self.iq_adjust_table is None:
+                    self.iq_adjust_table = np.zeros((len(net.f),self.M+1), dtype=complex)
+                    self.iq_adjust_table[:,0] = net.f
+                self.iq_adjust_table[:,m] = net.s[:,0,0]
+
+            self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)),:]
+
         self.logger.info(f"IQ adjustment vector: {self.iq_adjust}")
 
         return 0
@@ -488,11 +511,15 @@ class delaySynchronizer():
                 if self.current_state == "STATE_INIT": 
                     sync_state = 1
                     # Recalculate IQ adjustment for the RF center frequency
-                    daq_rf           = iq_header.rf_center_freq # Read RF center frequency for phase offset calculation
-                    iq_adjust_phase  = np.array(iq_adjust_time)*daq_rf*2*np.pi  # Convert time delay to phase         
+                    daq_rf           = self.iq_header.rf_center_freq # Read RF center frequency for phase offset calculation
+                    if self.iq_adjust_source == "explicit-time-delay":
+                        iq_adjust_phase  = np.array(self.iq_adjust_time)*daq_rf*2*np.pi  # Convert time delay to phase         
 
-                    self.iq_adjust = iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
-                    self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
+                        self.iq_adjust = self.iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
+                        self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
+                    elif self.iq_adjust_source == "touchstone":
+                        self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)),:]
+
                     self.logger.info(f"IQ adjustment vector: {self.iq_adjust}")
                     
                     
