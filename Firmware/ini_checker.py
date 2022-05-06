@@ -316,13 +316,13 @@ def check_ini(parameters, en_hw_check=True):
     if en_hw_check and len(iq_adjust_amplitude_str) != device_count-1:
         error_list.append("The number of specified IQ amplitude adjustment values does not much with available channels. It should contain channel count-1  values. Set:{0}, available:{1}".format(len(iq_adjust_amplitude_str), device_count))
 
-    iq_adjust_phase_str = cal_params['iq_adjust_phase']
-    iq_adjust_phase_str = iq_adjust_phase_str.split(',')
-    for phase_str in iq_adjust_phase_str:
-        if not chk_float(phase_str):
-            error_list.append("IQ phase adjust value must be a list of floats, Currently it is: '{0}' ".format(iq_adjust_phase_str))
-    if en_hw_check and len(iq_adjust_phase_str) != device_count-1:
-        error_list.append("The number of specified IQ phase adjustment values does not much with available channels. It should contain channel count-1  values. Set:{0}, available:{1}".format(len(iq_adjust_phase_str), device_count))
+    iq_adjust_time_str = cal_params['iq_adjust_time_delay_ns']
+    iq_adjust_time_str = iq_adjust_time_str.split(',')
+    for time_str in iq_adjust_time_str:
+        if not chk_float(time_str):
+            error_list.append("IQ timde delay adjust value must be a list of floats, Currently it is: '{0}' ".format(iq_adjust_time_str))
+    if en_hw_check and len(iq_adjust_time_str) != device_count-1:
+        error_list.append("The number of specified IQ time delay adjustment values does not much with available channels. It should contain channel count-1  values. Set:{0}, available:{1}".format(len(iq_adjust_phase_str), device_count))
 
     """
     --------------------------------

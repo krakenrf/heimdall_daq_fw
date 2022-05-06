@@ -97,7 +97,6 @@ class delaySynchronizer():
         self.MAX_FS_PPM_OFFSET = 0.01
         self.INT_FS_TUNE_GAIN  = np.array([[100, 2, 0],[50, 25, 15]]) #Reference table for tuning - [Delay limits] [Tune gains]
         self.FRAC_FS_TUNE_GAIN = 20
-
         
         # Auxiliary state variables
         self.sample_compensation_cntr = 0 # Count the number of issued delay compensations
@@ -184,12 +183,14 @@ class delaySynchronizer():
         iq_adjust_amplitude     = list(map(float, iq_adjust_amplitude_str))
         iq_adjust_amplitude     = 10**(np.array(iq_adjust_amplitude)/20) # Convert to voltage relations
         
-        iq_adjust_phase_str=parser.get('calibration','iq_adjust_phase')
-        iq_adjust_phase_str = iq_adjust_phase_str.split(',')[0:self.M-1]
-        iq_adjust_phase     = list(map(float, iq_adjust_phase_str))
-        iq_adjust_phase     = np.deg2rad(np.array(iq_adjust_phase))  # Convert deg to radian
+        iq_adjust_time_str = parser.get('calibration','iq_adjust_time_delay_ns')
+        iq_adjust_time_str = iq_adjust_time_str.split(',')[0:self.M-1]
+        iq_adjust_time     = list(map(float, iq_adjust_time_str))
+        
+        daq_rf  = parser.getint('daq', 'center_freq') # Read RF center frequency for phase offset calculation
+        iq_adjust_phase     = np.array(iq_adjust_time)*daq_rf*2*np.pi  # Convert time delay to phase         
 
-        self.iq_adjust = iq_adjust_amplitude * np.exp(1j*iq_adjust_phase)
+        self.iq_adjust = iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
         self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
         self.logger.info(f"IQ adjustment vector: {self.iq_adjust}")
 
@@ -486,6 +487,15 @@ class delaySynchronizer():
                 #            
                 if self.current_state == "STATE_INIT": 
                     sync_state = 1
+                    # Recalculate IQ adjustment for the RF center frequency
+                    daq_rf           = iq_header.rf_center_freq # Read RF center frequency for phase offset calculation
+                    iq_adjust_phase  = np.array(iq_adjust_time)*daq_rf*2*np.pi  # Convert time delay to phase         
+
+                    self.iq_adjust = iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
+                    self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
+                    self.logger.info(f"IQ adjustment vector: {self.iq_adjust}")
+                    
+                    
                     # Reset IQ corrections
                     self.iq_corrections    = np.ones(self.M, dtype=np.complex64) 
                     self.iq_corrections[:] = self.iq_adjust[:]
