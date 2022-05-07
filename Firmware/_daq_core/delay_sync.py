@@ -29,7 +29,7 @@ from ntpath import join
 import sys
 from struct import pack
 from time import sleep
-import os.path.join
+from os.path import join
 
 # Import third-party modules
 import numpy as np
@@ -207,15 +207,18 @@ class delaySynchronizer():
         elif self.iq_adjust_source == "touchstone":
             for m in range(self.M):
                 fname = join("_calibration", f"cable_ch{m}.s1p")
+                self.logger.info(f"Loading: {fname}")
                 net = rf.Network(fname)
                 if self.iq_adjust_table is None:
                     self.iq_adjust_table = np.zeros((len(net.f),self.M+1), dtype=complex)
-                    self.iq_adjust_table[:,0] = net.f
-                self.iq_adjust_table[:,m] = net.s[:,0,0]
+                    self.iq_adjust_table[:,0] = net.f[:]
+                self.iq_adjust_table[:,m+1] = net.s[:,0,0]
+            self.logger.info(f"{self.iq_adjust_table.shape}")
+            self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)), 1::]
 
-            self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)),:]
-
-        self.logger.info(f"IQ adjustment vector: {self.iq_adjust}")
+        self.logger.info(f"IQ adjustment vector: abs:{abs(self.iq_adjust)}")
+        self.logger.info(f"IQ adjustment vector: phase:{np.rad2deg(np.angle(self.iq_adjust))}")
+         
 
         return 0
     def open_interfaces(self):
@@ -518,9 +521,10 @@ class delaySynchronizer():
                         self.iq_adjust = self.iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
                         self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
                     elif self.iq_adjust_source == "touchstone":
-                        self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)),:]
+                        self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)),1::]
 
-                    self.logger.info(f"IQ adjustment vector: {self.iq_adjust}")
+                        self.logger.debug(f"IQ adjustment vector: abs:{abs(self.iq_adjust)}")
+                        self.logger.debug(f"IQ adjustment vector: phase:{np.rad2deg(np.angle(self.iq_adjust))}")
                     
                     
                     # Reset IQ corrections
