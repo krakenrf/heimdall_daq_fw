@@ -15,17 +15,16 @@ Burn the image to an 8GB or larger SD Card, connect a monitor and create a login
 1. Install build dependencies
 ```bash
 sudo apt update
-sudo apt install build-essential git cmake libusb-1.0-0-dev lsof
-sudo apt install libzmq3-dev
+sudo apt install build-essential git cmake libusb-1.0-0-dev lsof libzmq3-dev
 ```
 
-If you are using a KerberosSDR with the third party switches by Corey Koval, or equivalent:
+If you are using a KerberosSDR on a Raspberry Pi 4 with the third party switches by Corey Koval, or an equivalent switch board:
 
 ```
 sudo apt install pigpio
 ```   
    
-2. Install RTL-SDR kernel driver
+2. Install custom KrakenRF RTL-SDR kernel driver
 ```bash    
 git clone https://github.com/krakenrf/librtlsdr
 cd librtlsdr
@@ -61,6 +60,7 @@ make
 
 For 32-bit ARM systems:
 ```bash
+cd
 git clone https://github.com/krakenrf/Ne10
 cd Ne10
 mkdir build
@@ -158,7 +158,6 @@ cd krakensdr
 
 git clone https://github.com/krakenrf/heimdall_daq_fw
 cd heimdall_daq_fw
-git checkout development
 ```
 
 7. Build Heimdall C files
@@ -192,9 +191,18 @@ Now build Heimdall
 make
 ```
 
+## Intel Optimizations:
+If you are running a machine with an Intel CPU, you can install the highly optimized Intel MKL BLAS and Intel SVML libraries for a significant speed boost.  
+
+```
+conda activate kraken
+conda install "blas=*=mkl"
+conda install -c numba icc_rt
+```
+
 ## Next Steps:
 
-Now you will probably want to install the direction of arrival DSP code found in https://github.com/krakenrf/krakensdr_doa/tree/clientside_graphs.
+Now you will probably want to install the direction of arrival DSP code found in https://github.com/krakenrf/krakensdr_doa.
 
 ## Advanced Operation Notes:
 ### Test Run:

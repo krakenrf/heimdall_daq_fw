@@ -99,7 +99,6 @@ int main(int argc, char **argv)
     log_set_level(LOG_TRACE);
     configuration config;
     bool filter_reset;
-    uint32_t expected_frame_index=-1;
     int ch_no,dec;     
     int exit_flag=0;
     int active_buff_ind = 0, active_buff_ind_in=0;
@@ -230,15 +229,6 @@ int main(int argc, char **argv)
 		input_data_buffer = ((uint8_t *) input_sm_buff->shm_ptr[active_buff_ind_in] )+ IQ_HEADER_LENGTH/sizeof(uint8_t);
         CHK_SYNC_WORD(check_sync_word(iq_header));
         
-        if (expected_frame_index == -1)
-        {expected_frame_index = iq_header->daq_block_index;}
-
-        if (expected_frame_index != iq_header->daq_block_index)
-        {
-            log_warn("Frame index missmatch. Expected %d <--> %d Received",expected_frame_index,iq_header->daq_block_index);
-            expected_frame_index = iq_header->daq_block_index;
-        }
-        expected_frame_index += dec;
         cpi_index ++;
         
         /*Acquire buffer from the sink block*/

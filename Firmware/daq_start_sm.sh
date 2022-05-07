@@ -8,14 +8,15 @@
 
 # Check config file
 #res=$(python3 ini_checker.py 2>&1) #comment out ini checker for now since it is very slow
-if test -z "$res" 
-then
-      echo -e "\e[92mConfig file check [OK]\e[39m"
-else
-      echo -e "\e[91mConfig file check [FAIL]\e[39m"
-      echo $res
-      exit
-fi
+echo -e "\e[33mConfig file check bypassed [ WARNING ]\e[39m"
+#if test -z "$res" 
+#then
+#      echo -e "\e[92mConfig file check [ OK ]\e[39m"
+#else
+#      echo -e "\e[91mConfig file check [ FAIL ]\e[39m"
+#      echo $res
+#      exit
+#fi
 
 sysctl -w kernel.sched_rt_runtime_us=-1
 
@@ -121,7 +122,7 @@ fi
 
 # IQ Eth sink used for testing
 #sleep 3
-#python3 _daq_core/iq_eth_sink.py 2>_logs/iq_eth_sink.log &
+python3 _daq_core/iq_eth_sink.py 2>_logs/iq_eth_sink.log &
 
 echo -e "      )  (     "
 echo -e "      (   ) )  "

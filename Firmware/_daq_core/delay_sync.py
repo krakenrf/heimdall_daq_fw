@@ -75,9 +75,6 @@ class delaySynchronizer():
         self.N = 2**18 # Number of samples per channel
         self.R = 12 # Decimation ratio
         
-        # Frame tracking
-        self.expected_frame_index = -1
-        
         # Calibration control parameters
         self.N_proc = 2**18        
         self.std_ch_ind = 0 # Index of standard channel. All channels are matched in delay to this one        
@@ -452,17 +449,6 @@ class delaySynchronizer():
             if self.iq_header.check_sync_word():
                 self.logger.critical("IQ header sync word check failed, exiting..")
                 break
-            
-            # Initialize frame tracker
-            if self.expected_frame_index == -1:
-                self.expected_frame_index = self.iq_header.daq_block_index
-            
-            if self.expected_frame_index != self.iq_header.daq_block_index:
-                if not self.ignore_frame_drop_warning: self.logger.warning("Frame index missmatch. Expected {:d} <--> {:d} Received"\
-                    .format(self.expected_frame_index, self.iq_header.daq_block_index))
-                self.expected_frame_index = self.iq_header.daq_block_index                
-            
-            self.expected_frame_index += self.R
             
             # Prepare payload buffer
             incoming_payload_size = self.iq_header.cpi_length*self.iq_header.active_ant_chs*2*int(self.iq_header.sample_bit_depth/8)

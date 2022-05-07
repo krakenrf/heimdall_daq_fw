@@ -55,7 +55,7 @@ class IQRecorder():
         self.max_received_frames = frame_count        
         self.test_case = "phase_cont"
         self.dropped_frames = 0
-        self.daq_block_index_track = 0
+        self.cpi_index_track = 0
         
     def connect_eth(self):                                    
         """
@@ -115,7 +115,7 @@ class IQRecorder():
                     self.logger.critical("Sync word error")
                     return -1
 
-                #self.logger.info("IQ Frame received: {:d}".format(self.iq_header.daq_block_index))
+                #self.logger.info("IQ Frame received: {:d}".format(self.iq_header.cpi_index))
 
                 if self.iq_header.delay_sync_flag == 1 and \
                     self.iq_header.iq_sync_flag == 1 and \
@@ -123,26 +123,26 @@ class IQRecorder():
                     test_armed == False:
                     
                     test_armed = True
-                    self.first_frame = self.iq_header.daq_block_index
-                    self.daq_block_index_track = self.iq_header.daq_block_index
+                    self.first_frame = self.iq_header.cpi_index
+                    self.cpi_index_track = self.iq_header.cpi_index
                     self.logger.info("-->Armed<--")
                     self.logger.info("Start receiving: {:d} frames".format(self.max_received_frames))
                                         
                 if test_armed:
-                    #self.logger.debug("IQ Frame received, DAQ block index: {:d}".format(self.iq_header.daq_block_index))                    
-                    if self.daq_block_index_track != self.iq_header.daq_block_index:
-                        frame_count_diff = self.iq_header.daq_block_index-self.daq_block_index_track
-                        self.logger.error("{:d} frame droped, Exp.<->Rec. [{:d}<->{:d}]".format(frame_count_diff,self.daq_block_index_track, self.iq_header.daq_block_index))
+                    
+                    if self.cpi_index_track != self.iq_header.cpi_index:
+                        frame_count_diff = self.iq_header.cpi_index-self.cpi_index_track
+                        self.logger.error("{:d} frame droped, Exp.<->Rec. [{:d}<->{:d}]".format(frame_count_diff,self.cpi_index_track, self.iq_header.cpi_index))
                         self.dropped_frames += frame_count_diff
-                        self.daq_block_index_track = self.iq_header.daq_block_index
+                        self.cpi_index_track = self.iq_header.cpi_index
                         
                     
-                    self.daq_block_index_track +=1                    
-                    if self.first_frame + self.max_received_frames-1 <= self.iq_header.daq_block_index:                        
+                    self.cpi_index_track +=1                    
+                    if self.first_frame + self.max_received_frames-1 <= self.iq_header.cpi_index:                        
                         exit_flag = True   
                         self.logger.info("Total dropped frames: {:d}".format(self.dropped_frames))
                         self.logger.info("First received frame: {:d}".format(self.first_frame))
-                        self.logger.info("Current frame index: {:d}".format(self.iq_header.daq_block_index))
+                        self.logger.info("Current frame index: {:d}".format(self.iq_header.cpi_index))
             except:
                 errorMsg = sys.exc_info()[0]
                 self.logger.error("Error message: "+str(errorMsg))
