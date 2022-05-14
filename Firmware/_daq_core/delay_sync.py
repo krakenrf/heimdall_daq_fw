@@ -83,7 +83,7 @@ class delaySynchronizer():
         self.iq_adjust = np.zeros(self.M, dtype=np.complex64)
         self.iq_adjust_source = "explicit-time-delay" # "explicit-time-delay" / "touchstone"
         self.iq_adjust_amplitude = None
-        self.iq_adjust_phase = None
+        self.iq_adjust_time = None
         self.iq_adjust_table  = None # Frequency - Phase table for all channels 
 
         self.min_corr_peak_dyn_range = 20 # [dB]
@@ -195,11 +195,11 @@ class delaySynchronizer():
             
             iq_adjust_time_str = parser.get('calibration','iq_adjust_time_delay_ns')
             iq_adjust_time_str = iq_adjust_time_str.split(',')[0:self.M-1]
-            iq_adjust_time     = list(map(float, iq_adjust_time_str))
+            self.iq_adjust_time     = list(map(float, iq_adjust_time_str))
 
-            self.iq_adjust_phase     = np.array(iq_adjust_time)*daq_rf*2*np.pi  # Convert time delay to phase         
+            iq_adjust_phase     = np.array(self.iq_adjust_time)*daq_rf*2*np.pi  # Convert time delay to phase         
 
-            self.iq_adjust = self.iq_adjust_amplitude * np.exp(1j*self.iq_adjust_phase) # Assemble IQ adjustment vector
+            self.iq_adjust = self.iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
             self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
         elif self.iq_adjust_source == "touchstone":
             for m in range(self.M):
