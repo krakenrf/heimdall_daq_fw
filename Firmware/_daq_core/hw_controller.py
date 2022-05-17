@@ -140,7 +140,7 @@ class HWC():
             self.unified_gain_control=1
         else:
             self.unified_gain_control=0
-        if parser.getint('adpis','en_gain_tune_init'):
+        if parser.getint('calibration','en_gain_tune_init'):
             self.gain_tune_states=[True]*self.M
         else:
             self.gain_tune_states=[False]*self.M
@@ -436,8 +436,10 @@ class HWC():
                     self.logger.debug(f"Received reply: {reply}")                    
 
                     # TODO: Set initial ADPIS values here
-                    self.current_state = "STATE_GAIN_CTR_WAIT" # Enabled for testing
-                    #self.current_state = "STATE_IQ_CAL" # CARL DISABLE gain tuning
+                    if any(self.gain_tune_states):
+                        self.current_state = "STATE_GAIN_CTR_WAIT" 
+                    else:
+                        self.current_state = "STATE_IQ_CAL" 
                 #
                 #------------------------------------------>
                 #   
