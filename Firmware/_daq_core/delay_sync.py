@@ -212,7 +212,8 @@ class delaySynchronizer():
                 self.iq_adjust_table[:,m+1] = net.s[:,0,0]
             self.logger.info(f"{self.iq_adjust_table.shape}")
             self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)), 1::]
-
+        
+        self.iq_adjust /= self.iq_adjust[self.std_ch_ind]
         self.logger.info(f"IQ adjustment vector: abs:{abs(self.iq_adjust)}")
         self.logger.info(f"IQ adjustment vector: phase:{np.rad2deg(np.angle(self.iq_adjust))}")
          
@@ -512,7 +513,7 @@ class delaySynchronizer():
                         self.logger.debug(f"IQ adjustment vector: abs:{abs(self.iq_adjust)}")
                         self.logger.debug(f"IQ adjustment vector: phase:{np.rad2deg(np.angle(self.iq_adjust))}")
                     
-                    
+                    self.iq_adjust /= self.iq_adjust[self.std_ch_ind]
                     # Reset IQ corrections
                     self.iq_corrections    = np.ones(self.M, dtype=np.complex64) 
                     self.iq_corrections[:] = self.iq_adjust[:]
