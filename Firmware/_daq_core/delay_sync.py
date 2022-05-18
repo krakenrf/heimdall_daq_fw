@@ -25,9 +25,11 @@
 """
 # Import built-in modules
 import logging
+from ntpath import join
 import sys
 from struct import pack
 from time import sleep
+from os.path import join
 
 # Import third-party modules
 import numpy as np
@@ -36,6 +38,7 @@ from scipy import fft
 from scipy.optimize import curve_fit
 from configparser import ConfigParser
 import zmq
+import skrf as rf
 
 import numba as nb
 from numba import jit, njit
@@ -72,14 +75,17 @@ class delaySynchronizer():
         self.N = 2**18 # Number of samples per channel
         self.R = 12 # Decimation ratio
         
-        # Frame tracking
-        self.expected_frame_index = -1
-        
         # Calibration control parameters
         self.N_proc = 2**18        
         self.std_ch_ind = 0 # Index of standard channel. All channels are matched in delay to this one        
-        self.en_iq_cal = False # Enables amlitude and phase calibration
-                
+        self.en_iq_cal = False # Enables amlitude and phase calibration        
+        # IQ calibration adjustment
+        self.iq_adjust = np.zeros(self.M, dtype=np.complex64)
+        self.iq_adjust_source = "explicit-time-delay" # "explicit-time-delay" / "touchstone"
+        self.iq_adjust_amplitude = None
+        self.iq_adjust_time = None
+        self.iq_adjust_table  = None # Frequency - Phase table for all channels 
+
         self.min_corr_peak_dyn_range = 20 # [dB]
         self.corr_peak_offset = 100 # [sample]
         self.cal_track_mode = 0        
@@ -96,7 +102,6 @@ class delaySynchronizer():
         self.MAX_FS_PPM_OFFSET = 0.01
         self.INT_FS_TUNE_GAIN  = np.array([[100, 2, 0],[50, 25, 15]]) #Reference table for tuning - [Delay limits] [Tune gains]
         self.FRAC_FS_TUNE_GAIN = 20
-
         
         # Auxiliary state variables
         self.sample_compensation_cntr = 0 # Count the number of issued delay compensations
@@ -177,6 +182,42 @@ class delaySynchronizer():
         # Convert to voltage ratio
         self.amp_diff_tolerance = 10**(self.amp_diff_tolerance/20)
         
+        # External IQ calibration adjustment
+        self.iq_adjust_source = parser.get('calibration','iq_adjust_source')
+
+        daq_rf  = parser.getint('daq', 'center_freq') # Read RF center frequency for phase offset calculation
+
+        if self.iq_adjust_source == "explicit-time-delay":
+            iq_adjust_amplitude_str = parser.get('calibration','iq_adjust_amplitude')
+            iq_adjust_amplitude_str = iq_adjust_amplitude_str.split(',')[0:self.M-1]
+            iq_adjust_amplitude     = list(map(float, iq_adjust_amplitude_str))
+            self.iq_adjust_amplitude     = 10**(np.array(iq_adjust_amplitude)/20) # Convert to voltage relations
+            
+            iq_adjust_time_str  = parser.get('calibration','iq_adjust_time_delay_ns')
+            iq_adjust_time_str  = iq_adjust_time_str.split(',')[0:self.M-1]
+            self.iq_adjust_time = np.array(list(map(float, iq_adjust_time_str)))*10**-9
+
+            iq_adjust_phase     = self.iq_adjust_time*daq_rf*2*np.pi  # Convert time delay to phase         
+
+            self.iq_adjust = self.iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
+            self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
+        elif self.iq_adjust_source == "touchstone":
+            for m in range(self.M):
+                fname = join("_calibration", f"cable_ch{m}.s1p")
+                self.logger.info(f"Loading: {fname}")
+                net = rf.Network(fname)
+                if self.iq_adjust_table is None:
+                    self.iq_adjust_table = np.zeros((len(net.f),self.M+1), dtype=complex)
+                    self.iq_adjust_table[:,0] = net.f[:]
+                self.iq_adjust_table[:,m+1] = net.s[:,0,0]
+            self.logger.info(f"{self.iq_adjust_table.shape}")
+            self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)), 1::]
+        
+        self.iq_adjust /= self.iq_adjust[self.std_ch_ind]
+        self.logger.info(f"IQ adjustment vector: abs:{abs(self.iq_adjust)}")
+        self.logger.info(f"IQ adjustment vector: phase:{np.rad2deg(np.angle(self.iq_adjust))}")
+         
+
         return 0
     def open_interfaces(self):
         """
@@ -410,17 +451,6 @@ class delaySynchronizer():
                 self.logger.critical("IQ header sync word check failed, exiting..")
                 break
             
-            # Initialize frame tracker
-            if self.expected_frame_index == -1:
-                self.expected_frame_index = self.iq_header.daq_block_index
-            
-            if self.expected_frame_index != self.iq_header.daq_block_index:
-                if not self.ignore_frame_drop_warning: self.logger.warning("Frame index missmatch. Expected {:d} <--> {:d} Received"\
-                    .format(self.expected_frame_index, self.iq_header.daq_block_index))
-                self.expected_frame_index = self.iq_header.daq_block_index                
-            
-            self.expected_frame_index += self.R
-            
             # Prepare payload buffer
             incoming_payload_size = self.iq_header.cpi_length*self.iq_header.active_ant_chs*2*int(self.iq_header.sample_bit_depth/8)
             if incoming_payload_size > 0:
@@ -470,8 +500,23 @@ class delaySynchronizer():
                 #            
                 if self.current_state == "STATE_INIT": 
                     sync_state = 1
+                    # Recalculate IQ adjustment for the RF center frequency
+                    daq_rf           = self.iq_header.rf_center_freq # Read RF center frequency for phase offset calculation
+                    if self.iq_adjust_source == "explicit-time-delay":
+                        iq_adjust_phase  = self.iq_adjust_time*daq_rf*2*np.pi  # Convert time delay to phase         
+
+                        self.iq_adjust = self.iq_adjust_amplitude * np.exp(1j*iq_adjust_phase) # Assemble IQ adjustment vector
+                        self.iq_adjust = np.insert(self.iq_adjust, self.std_ch_ind, 1+0j)
+                    elif self.iq_adjust_source == "touchstone":
+                        self.iq_adjust = self.iq_adjust_table[np.argmin(abs(self.iq_adjust_table[:,0]-daq_rf)),1::]
+
+                        self.logger.debug(f"IQ adjustment vector: abs:{abs(self.iq_adjust)}")
+                        self.logger.debug(f"IQ adjustment vector: phase:{np.rad2deg(np.angle(self.iq_adjust))}")
+                    
+                    self.iq_adjust /= self.iq_adjust[self.std_ch_ind]
                     # Reset IQ corrections
-                    self.iq_corrections = np.ones(self.M, dtype=np.complex64) 
+                    self.iq_corrections    = np.ones(self.M, dtype=np.complex64) 
+                    self.iq_corrections[:] = self.iq_adjust[:]
                     # Calibration frame                    
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL: 
                         self.current_state = "STATE_SAMPLE_CAL"
@@ -592,6 +637,7 @@ class delaySynchronizer():
                     
                     if self.en_iq_cal:
                         dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
+                        iq_diffs *= self.iq_adjust[:]
                         
                         if (dyn_ranges < self.min_corr_peak_dyn_range).any():
                             self.logger.warning("Correlation peak dynamic range is insufficient to perform calibration")
@@ -634,6 +680,8 @@ class delaySynchronizer():
                     # Wait here until the calibration frame is turned off
                     if self.iq_header.frame_type == IQHeader.FRAME_TYPE_DATA: # Normal data frame
                         dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
+                        iq_diffs *= self.iq_adjust[:]
+
                         if self.cal_track_mode == 1:
                             self.iq_diff_ref[:] = iq_diffs[:]
                         self.current_state = "STATE_TRACK"
@@ -652,7 +700,7 @@ class delaySynchronizer():
                        (self.cal_track_mode == 2 and self.iq_header.frame_type == IQHeader.FRAME_TYPE_CAL):
 
                         dyn_ranges, iq_diffs = self.calc_iq_sync(iq_samples)
-
+                        iq_diffs *= self.iq_adjust[:]
                         # Check sample sync loss
                         if (dyn_ranges < self.min_corr_peak_dyn_range).any():
                             self.logger.warning("Sample sync may lost")

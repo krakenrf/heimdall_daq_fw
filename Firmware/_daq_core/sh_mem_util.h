@@ -8,6 +8,7 @@
 *       Control FIFO Parameters
 *-------------------------------------
 */
+#define INGORE_FRAME_DROP_WARNINGS 1
 
 #define GEN_FRAME_SM_NAME_A "HEIMDALL_DAQ_FW_GEN_STD_FRAME_A"
 #define GEN_FRAME_SM_NAME_B "HEIMDALL_DAQ_FW_GEN_STD_FRAME_B"
@@ -23,11 +24,6 @@
 #define DECIMATOR_OUT_SM_NAME_B "decimator_out_B"
 #define DECIMATOR_OUT_FW_FIFO "_data_control/fw_decimator_out"
 #define DECIMATOR_OUT_BW_FIFO "_data_control/bw_decimator_out"
-
-#define SQUELCH_OUT_SM_NAME_A "squelch_out_A"
-#define SQUELCH_OUT_SM_NAME_B "squelch_out_B"
-#define SQUELCH_OUT_FW_FIFO "_data_control/fw_squelch_out"
-#define SQUELCH_OUT_BW_FIFO "_data_control/bw_squelch_out"
 
 #define DELAY_SYNC_IQ_SM_NAME_A "delay_sync_iq_A"
 #define DELAY_SYNC_IQ_SM_NAME_B "delay_sync_iq_B"

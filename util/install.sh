@@ -46,11 +46,13 @@ echo "6/5 Install the required python3 packages"
 sudo apt install python3-pip
 sudo python3 -m pip install numpy
 sudo python3 -m pip install configparser
-# For testing
 sudo apt-get install libatlas-base-dev gfortran
 sudo python3 -m pip install scipy
-sudo python3 -m pip install plotly
 sudo python3 -m pip install pyzmq
+sudo python3 -m pip install scikit-rf
+# For testing
+sudo python3 -m pip install plotly
+
 
 sudo apt install libzmq3-dev -y
 echo "6/6 Build HeIMDALL DAQ Firmware"
