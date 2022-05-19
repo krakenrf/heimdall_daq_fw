@@ -139,7 +139,8 @@ sudo reboot
 
 5. Setup the Miniconda Environment
 
-``` bash
+``` 
+bash
 conda create -n kraken python=3.9.7
 conda activate kraken
 
@@ -147,7 +148,8 @@ conda install scipy
 conda install numba
 conda install configparser
 conda install pyzmq
-conda install scikit-rf```
+conda install scikit-rf 
+```
 
 6. Create a root folder and clone the Heimdall DAQ Firmware
 
