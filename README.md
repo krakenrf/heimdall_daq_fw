@@ -13,7 +13,7 @@ We recommend starting with a fresh install of Raspbian 64-bit Lite from https://
 Burn the image to an 8GB or larger SD Card, connect a monitor and create a login (newer RaspiOS no longer has the default pi user). Set up WiFi with `sudo raspi-config`, enable SSH and change the hostname to "krakensdr" if desired via raspi-config.
 
 1. Install build dependencies
-```bash
+```
 sudo apt update
 sudo apt install build-essential git cmake libusb-1.0-0-dev lsof libzmq3-dev
 ```
@@ -25,7 +25,7 @@ sudo apt install pigpio
 ```   
    
 2. Install custom KrakenRF RTL-SDR kernel driver
-```bash    
+```    
 git clone https://github.com/krakenrf/librtlsdr
 cd librtlsdr
 mkdir build
@@ -39,7 +39,7 @@ echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-
 ```
 
 Restart the system
-``` bash
+``` 
 sudo reboot
 ```
 
@@ -49,7 +49,7 @@ sudo reboot
 
 For 64-bit Pi 4 (e.g. Running 64-Bit Raspbian OS)
 
-```bash
+```
 git clone https://github.com/krakenrf/Ne10
 cd Ne10
 mkdir build
@@ -59,7 +59,7 @@ make
  ```
 
 For 32-bit ARM systems:
-```bash
+```
 cd
 git clone https://github.com/krakenrf/Ne10
 cd Ne10
@@ -111,7 +111,7 @@ sudo ldconfig
 
 The instructions below are for 64-bit aarch64 ARM systems such as the Pi 4. If you're installing to an x86 system, please download the appropriate miniforge installer for your system which can be found at https://github.com/conda-forge/miniforge. For x86 64-Bit systems you will most likely want https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 
-``` bash
+```
 cd
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
 chmod ug+x Miniforge3-Linux-aarch64.sh
@@ -121,26 +121,25 @@ Read the license agreement and select ENTER or [yes] for all questions and wait 
 
 Restart the Pi, or logout, then log on again.
 
-``` bash
+```
 sudo reboot
 ```
 
 Disable the default base environment.
 
-``` bash
+```
 conda config --set auto_activate_base false
 ```
 
 Restart the Pi, or logout, then log on again.
 
-``` bash
+```
 sudo reboot
 ```
 
 5. Setup the Miniconda Environment
 
 ``` 
-bash
 conda create -n kraken python=3.9.7
 conda activate kraken
 
@@ -153,7 +152,7 @@ conda install scikit-rf
 
 6. Create a root folder and clone the Heimdall DAQ Firmware
 
-``` bash
+```
 cd
 mkdir krakensdr
 cd krakensdr
@@ -164,32 +163,37 @@ cd heimdall_daq_fw
 
 7. Build Heimdall C files
 
-First copy the libNe10.a library over to _daq_core (only if you are on an ARM device and using the NE10 library)
-``` bash
+Browse to the _daq_core folder
+
+```
 cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
+```
+
+(ARM ONLY) If you are on an ARM device, copy the libNe10.a library over to _daq_core (only if you are on an ARM device and using the NE10 library)
+```
 cp ~/Ne10/build/modules/libNE10.a .
 ```
 
-Next if you are on a Pi 4, we recommend editing the Makefile to enable the optimized Pi 4 build. If it is a low performance system like a single board computer, you may with to research optimized C build flags. If it's a high performance system, optimizations are probably not required and the default can be left.
-``` bash
+(PI 4 ONLY) Next if you are on a Pi 4, we recommend editing the Makefile to enable the optimized Pi 4 build. If it is a low performance system like a single board computer, you may with to research optimized C build flags. If it's a high performance system, optimizations are probably not required and the default can be left.
+``` 
 nano Makefile
 ```
 
-Uncomment the line below "# Optimized C-flags for Pi 4" by deleting the '#', and comment out the top CFLAGS line by adding a '#' at the start of that line. It should look like this:
-``` bash
+(PI 4 ONLY) Uncomment the line below "# Optimized C-flags for Pi 4" by deleting the '#', and comment out the top CFLAGS line by adding a '#' at the start of that line. It should look like this:
+```
 CC=gcc
 # CFLAGS=-Wall -std=gnu99 -march=native -O2
 # Optimized C-flags for Pi 4
 CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
 ```
 
-If you are using a KerberosSDR with third party switches by Corey Koval, or equivalent, make sure you uncomment the line `PIGPIO=-lpigpio -DUSEPIGPIO` as well. If not, leave it commented out.
+(PI 4 ONLY) If you are using a KerberosSDR with third party switches by Corey Koval, or equivalent, make sure you uncomment the line `PIGPIO=-lpigpio -DUSEPIGPIO` as well. If not, leave it commented out.
 
 Ctrl+X, Y to save and exit nano.
 
-Now build Heimdall
+(ALL) Now build Heimdall
 
-``` bash
+``` 
 make
 ```
 
@@ -233,7 +237,7 @@ The latest version of the documentation of the DAQ chain can be found in the Doc
 
 Python 3.8 or newer is required due to its built-in shared memory library. Note that the latest Raspbian versions now come preinstalled with Python 3.8 so this step is not required.
 
-```bash
+```
 sudo apt-get update
 sudo apt-get install -y build-essential tk-dev libncurses5-dev libncursesw5-dev libreadline6-dev libdb5.3-dev libgdbm-dev libsqlite3-dev libssl-dev libbz2-dev libexpat1-dev liblzma-dev zlib1g-dev libffi-dev tar wget vim
 wget https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tgz
