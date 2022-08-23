@@ -80,6 +80,7 @@ sudo update-alternatives --config c++
 *More info on the KFR library building: https://github.com/kfrlib/kfr/blob/master/README.md#usage*
 - Build and install the library
 ```bash
+cd
 git clone https://github.com/krakenrf/kfr
 cd kfr
 mkdir build
