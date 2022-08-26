@@ -47,14 +47,14 @@ sudo reboot
     
 *More info on building Ne10: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
 
-For 64-bit Pi 4 (e.g. Running 64-Bit Raspbian OS)
+For ARM 64-bit (e.g. Running 64-Bit Raspbian OS on Pi 4)
 
 ```
 git clone https://github.com/krakenrf/Ne10
 cd Ne10
 mkdir build
 cd build
-cmake -DNE10_LINUX_TARGET_ARCH=aarch64 -DGNULINUX_PLATFORM=ON -DCMAKE_C_FLAGS="-mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations" ..
+cmake -DNE10_LINUX_TARGET_ARCH=aarch64 -DGNULINUX_PLATFORM=ON -DCMAKE_C_FLAGS="-mcpu=native -Ofast -funsafe-math-optimizations" ..
 make
  ```
 
