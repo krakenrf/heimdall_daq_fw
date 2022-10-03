@@ -10,15 +10,17 @@ Manual install is only required if you are not using the premade images, and are
 
 ### Install script
 
-You can use on of our install scripts to automate a manual install. The script will install heimdall, and the DoA and PR DSP software. Details on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts
+ You can use on of our install scripts to automate a manual install. The script will install heimdall, and the DoA and PR DSP software. Details on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts
 
-### Manual Install
+### Manual Step by Step Install
 
-This code should run on any Linux system, however it has been mostly tested on RaspiOS Lite 64-bit.
+We recommend using the install script if you are installing to a fresh system instead of doing this sytep by step install. However, if you are having problems doing the step by step install may help you figure out what is going wrong.
 
-We recommend starting with a fresh install of Raspbian 64-bit Lite from https://downloads.raspberrypi.org/raspios_lite_arm64/images/
+This code should run on any Linux system running on a aarch64(ARM64) or x86_64 systems. 
 
-Burn the image to an 8GB or larger SD Card, connect a monitor and create a login (newer RaspiOS no longer has the default pi user). Set up WiFi with `sudo raspi-config`, enable SSH and change the hostname to "krakensdr" if desired via raspi-config.
+It been tested on [RaspiOS Lite 64-bit](https://downloads.raspberrypi.org/raspios_lite_arm64/images), Ubuntu 64-bit and Armbian 64-bit. 
+
+Note that due to the use of conda, the install will only work on 64-bit systems. If you do not wish to use conda, it is possible to install to 32-bit systems. However, the reason conda is used is because the Python repo's don't appear to support numba on several ARM devices without conda. 
 
 1. Install build dependencies
 ```
@@ -51,11 +53,9 @@ Restart the system
 sudo reboot
 ```
 
-3. [ARM platforms]  Install the Ne10 DSP library for ARM devices
+3. [ARM]  Install the Ne10 DSP library for ARM devices
     
-*More info on building Ne10: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
-
-For ARM 64-bit (e.g. Running 64-Bit Raspbian OS on Pi 4)
+For ARM 64-bit (e.g. Running 64-Bit Raspbian OS on Pi 4) *More info on building Ne10: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
 
 ```
 git clone https://github.com/krakenrf/Ne10
@@ -66,15 +66,11 @@ cmake -DNE10_LINUX_TARGET_ARCH=aarch64 -DGNULINUX_PLATFORM=ON -DCMAKE_C_FLAGS="-
 make
  ```
  
-3. [X86 platforms] Install the KFR DSP library 
-- Config compiler
+3. [X86_64] Install the KFR DSP library 
 ```bash
 sudo apt-get install clang
-sudo update-alternatives --config c++
 ```
-- Select clang++
-*More info on the KFR library building: https://github.com/kfrlib/kfr/blob/master/README.md#usage*
-- Build and install the library
+Build and install the library
 ```bash
 cd
 git clone https://github.com/krakenrf/kfr
@@ -106,8 +102,9 @@ sudo ldconfig
 
 4. Install Miniforge
 
-The instructions below are for 64-bit aarch64 ARM systems such as the Pi 4. If you're installing to an x86 system, please download the appropriate miniforge installer for your system which can be found at https://github.com/conda-forge/miniforge. For x86 64-Bit systems you will most likely want https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+Install via the appropriate script for the system you are using (ARM aarch64 / x86_64)
 
+[ARM]
 ```
 cd
 wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh
@@ -115,6 +112,14 @@ chmod ug+x Miniforge3-Linux-aarch64.sh
 ./Miniforge3-Linux-aarch64.sh
 ```
 Read the license agreement and select ENTER or [yes] for all questions and wait a few minutes for the installation to complete.
+
+[x86_64]
+```
+cd
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+chmod ug+x Miniforge3-Linux-x86_64.sh
+./Miniforge3-Linux-x86_64.sh
+```
 
 Restart the Pi, or logout, then log on again.
 
@@ -168,16 +173,18 @@ cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
 
 Copy librtlsdr library and includes to the _daq_core folder
 
+```
 cp ~/librtlsdr/build/src/librtlsdr.a .
 cp ~/librtlsdr/include/rtl-sdr.h .
 cp ~/librtlsdr/include/rtl-sdr_export.h .
+```
 
-(ARM ONLY) If you are on an ARM device, copy the libNe10.a library over to _daq_core (only if you are on an ARM device and using the NE10 library)
+[ARM] If you are on an ARM device, copy the libNe10.a library over to _daq_core
 ```
 cp ~/Ne10/build/modules/libNE10.a .
 ```
 
-(PI 4 ONLY) If you are using a KerberosSDR with third party switches by Corey Koval, or equivalent, make sure you uncomment the line `PIGPIO=-lpigpio -DUSEPIGPIO` in the Makefile. If not, leave it commented out.
+[PI 4 ONLY] If you are using a KerberosSDR with third party switches by Corey Koval, or equivalent, make sure you uncomment the line `PIGPIO=-lpigpio -DUSEPIGPIO` in the Makefile. If not, leave it commented out.
 
 ``` 
 nano Makefile
@@ -185,14 +192,14 @@ nano Makefile
 
 Make your changes, then Ctrl+X, Y to save and exit nano.
 
-(ALL) Now build Heimdall
+[ALL] Now build Heimdall
 
 ``` 
 make
 ```
 
 ## Intel Optimizations:
-If you are running a machine with an Intel CPU, you can install the highly optimized Intel MKL BLAS and Intel SVML libraries for a significant speed boost.  
+If you are running a machine with an Intel x86_64 CPU, you can install the highly optimized Intel MKL BLAS and Intel SVML libraries for a significant speed boost. Installing on AMD CPUs can also help.
 
 ```
 conda activate kraken
