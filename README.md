@@ -36,12 +36,12 @@ sudo apt install pigpio
 ```    
 git clone https://github.com/krakenrf/librtlsdr
 cd librtlsdr
+sudo cp rtl-sdr.rules /etc/udev/rules.d/rtl-sdr.rules
 mkdir build
 cd build
 cmake ../ -DINSTALL_UDEV_RULES=ON
 make
-sudo make install
-sudo ldconfig
+sudo ln -s ~/librtlsdr/build/src/rtl_test /usr/local/bin/kraken_test
 
 echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.conf
 ```
@@ -63,18 +63,6 @@ cd Ne10
 mkdir build
 cd build
 cmake -DNE10_LINUX_TARGET_ARCH=aarch64 -DGNULINUX_PLATFORM=ON -DCMAKE_C_FLAGS="-mcpu=native -Ofast -funsafe-math-optimizations" ..
-make
- ```
-
-For 32-bit ARM systems:
-```
-cd
-git clone https://github.com/krakenrf/Ne10
-cd Ne10
-mkdir build
-cd build
-export NE10_LINUX_TARGET_ARCH=armv7 # Set the target architecture (can also be "aarch64")
-cmake -DGNULINUX_PLATFORM=ON ..     # Run CMake to generate the build files
 make
  ```
  
@@ -178,27 +166,24 @@ Browse to the _daq_core folder
 cd ~/krakensdr/heimdall_daq_fw/Firmware/_daq_core/
 ```
 
+Copy librtlsdr library and includes to the _daq_core folder
+
+cp ~/librtlsdr/build/src/librtlsdr.a .
+cp ~/librtlsdr/include/rtl-sdr.h .
+cp ~/librtlsdr/include/rtl-sdr_export.h .
+
 (ARM ONLY) If you are on an ARM device, copy the libNe10.a library over to _daq_core (only if you are on an ARM device and using the NE10 library)
 ```
 cp ~/Ne10/build/modules/libNE10.a .
 ```
 
-(PI 4 ONLY) Next if you are on a Pi 4, we recommend editing the Makefile to enable the optimized Pi 4 build. If it is a low performance system like a single board computer, you may with to research optimized C build flags. If it's a high performance system, optimizations are probably not required and the default can be left.
+(PI 4 ONLY) If you are using a KerberosSDR with third party switches by Corey Koval, or equivalent, make sure you uncomment the line `PIGPIO=-lpigpio -DUSEPIGPIO` in the Makefile. If not, leave it commented out.
+
 ``` 
 nano Makefile
 ```
 
-(PI 4 ONLY) Uncomment the line below "# Optimized C-flags for Pi 4" by deleting the '#', and comment out the top CFLAGS line by adding a '#' at the start of that line. It should look like this:
-```
-CC=gcc
-# CFLAGS=-Wall -std=gnu99 -march=native -O2
-# Optimized C-flags for Pi 4
-CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
-```
-
-(PI 4 ONLY) If you are using a KerberosSDR with third party switches by Corey Koval, or equivalent, make sure you uncomment the line `PIGPIO=-lpigpio -DUSEPIGPIO` as well. If not, leave it commented out.
-
-Ctrl+X, Y to save and exit nano.
+Make your changes, then Ctrl+X, Y to save and exit nano.
 
 (ALL) Now build Heimdall
 
