@@ -4,13 +4,21 @@ Coherent data acquisition signal processing chain for multichannel SDRs.
 Tested on the Raspberry Pi 4. Should work with all models, 2GB, 4GB and 8GB.
 Should also be compatible with other systems including x86, but a system with at least 4-CPU cores is probably required.
 
+## Usage
+
+If you are running a Raspberry Pi 4 we recommend starting with our read to use image at https://github.com/krakenrf/krakensdr_doa/releases/.
+
+This image contains heimdall, the direction finding and Passive Radar software. The direction finding software autostarts on boot if the KrakenSDR is plugged in and powered.
+
+Alternatively, if you are on another system see our Wiki at for Docker and Virtual Box options https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts, or see below for manual install information.
+
 ## Manual Installation
 
 Manual install is only required if you are not using the premade images, and are setting up the software from a clean system. If you just want to run the DoA or PR software using a premade image please take a look at our Wiki https://github.com/krakenrf/krakensdr_docs/wiki, specifically the "Direction Finding Quickstart Guide", and the "VirtualBox, Docker Images and Install Scripts" sections.
 
 ### Install script
 
- You can use on of our install scripts to automate a manual install. The script will install heimdall, and the DoA and PR DSP software. Details on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts
+If a premade image does not exist for your computing device, you can use one of our install scripts to automate a fresh install. The script will install heimdall, and the DoA and PR DSP software automatically. Details on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts
 
 ### Manual Step by Step Install
 
