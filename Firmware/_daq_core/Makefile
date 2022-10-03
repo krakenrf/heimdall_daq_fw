@@ -1,7 +1,7 @@
 # Makefile for compiling the DAQ firmware
 # Author: Tamás Pető, Sándor Bajusz
 CC=gcc
-CFLAGS=-Wall -std=gnu99 -march=native -O2
+CFLAGS=-Wall -std=gnu99 -march=native -O2 -I.
 
 # Optimized C-flags for Pi 4
 #CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
