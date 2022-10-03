@@ -22,6 +22,8 @@ It been tested on [RaspiOS Lite 64-bit](https://downloads.raspberrypi.org/raspio
 
 Note that due to the use of conda, the install will only work on 64-bit systems. If you do not wish to use conda, it is possible to install to 32-bit systems. However, the reason conda is used is because the Python repo's don't appear to support numba on several ARM devices without conda. 
 
+Steps prefixed with [ARM] should only be run on ARM systems. Steps prefixed with [x86_64] should only be run on x86_64 systems.
+
 1. Install build dependencies
 ```
 sudo apt update
