@@ -18,7 +18,7 @@ echo -e "\e[33mConfig file check bypassed [ WARNING ]\e[39m"
 #      exit
 #fi
 
-sysctl -w kernel.sched_rt_runtime_us=-1
+sudo sysctl -w kernel.sched_rt_runtime_us=-1
 
 # Read config ini file
 out_data_iface_type=$(awk -F "=" '/out_data_iface_type/ {print $2}' daq_chain_config.ini)
