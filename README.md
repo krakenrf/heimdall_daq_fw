@@ -227,12 +227,14 @@ Now you will probably want to install the direction of arrival DSP code found in
 ### Test Run:
 The data acquisition chain can be started by simply running the 'daq_start_sm.sh' script in sudo mode.
 ```bash
-sudo ./Firmware/daq_start_sm.sh
+cd krakensdr_pr/Firmware
+sudo ./daq_start_sm.sh
 ```
 
 In order to start the system in simulation mode run the 'daq_synthetic_start.sh' script in sudo mode.
 ```bash
-sudo ./Firmware/daq_synthetic_start.sh
+cd krakensdr_pr/Firmware
+sudo ./daq_synthetic_start.sh
 ```
 
 Prior to the system startup set parameters of the required operation mode in the 'daq_chain_config.ini'.
