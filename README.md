@@ -157,7 +157,7 @@ sudo reboot
 conda create -n kraken python=3.9.7
 conda activate kraken
 
-conda install scipy
+conda install scipy==1.9.3
 conda install numba
 conda install configparser
 conda install pyzmq
