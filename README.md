@@ -158,7 +158,7 @@ conda create -n kraken python=3.9.7
 conda activate kraken
 
 conda install scipy==1.9.3
-conda install numba
+conda install numba==0.56.4
 conda install configparser
 conda install pyzmq
 conda install scikit-rf 
