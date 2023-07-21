@@ -100,7 +100,8 @@ def check_ini(parameters, en_hw_check=True):
             error_list.append("Number of channels must be a non zero positive number. Currently it is: '{0}' ".format(hw_params['num_ch']))
         if en_hw_check and int(hw_params['num_ch']) > device_count:
             error_list.append("Only {0} receiver channels are available, but {1} is requested!".format(device_count, hw_params['num_ch']))
-
+        else:
+            device_count = int(hw_params['num_ch'])
     bias_init_str = hw_params['en_bias_tee']
     bias_init_str = bias_init_str.split(',')
     for bias_en_str in bias_init_str:
@@ -316,6 +317,8 @@ def check_ini(parameters, en_hw_check=True):
 
     iq_adjust_amplitude_str = cal_params['iq_adjust_amplitude']
     iq_adjust_amplitude_str = iq_adjust_amplitude_str.split(',')
+    iq_adjust_time_delay_str     = cal_params['iq_adjust_time_delay_ns']
+    iq_adjust_time_delay_str     = iq_adjust_time_delay_str.split(',')
     for amplitude_str in iq_adjust_amplitude_str:
         if not chk_float(amplitude_str):
             error_list.append("IQ amplitude adjust value must be a list of floats, Currently it is: '{0}' ".format(iq_adjust_amplitude_str))
@@ -328,7 +331,7 @@ def check_ini(parameters, en_hw_check=True):
         if not chk_float(time_str):
             error_list.append("IQ timde delay adjust value must be a list of floats, Currently it is: '{0}' ".format(iq_adjust_time_str))
     if en_hw_check and len(iq_adjust_time_str) != device_count-1:
-        error_list.append("The number of specified IQ time delay adjustment values does not much with available channels. It should contain channel count-1  values. Set:{0}, available:{1}".format(len(iq_adjust_phase_str), device_count))
+        error_list.append("The number of specified IQ time delay adjustment values does not much with available channels. It should contain channel count-1  values. Set:{0}, available:{1}".format(len(iq_adjust_time_delay_str), device_count))
 
     """
     --------------------------------
