@@ -86,6 +86,7 @@ float *new_fs_corrections;
 int fs_correction_flag, fs_reset_cntr;
 uint32_t new_center_freq;
 int center_freq_change_flag;
+int agc_change_flag = 0;
 static uint32_t ch_no, buffer_size;
 struct timeval frame_time_stamp;
 static int ctr_channel_index;
@@ -232,6 +233,12 @@ void * fifo_read_tf(void* arg)
                 log_info("Channel: %d, Gain: %f dB",i, (float) parameters[i]/10);
             }
             gain_change_flag=1;
+        }
+        /* Enable AGC */
+        else if( msg->command_identifier == 'a')
+        {
+            log_info("Signal 'a': enable AGC request");
+            agc_change_flag = 1;
         }
         /* Sampling Freq Correction - Used for sampling clock delay tuning*/
         else if( msg->command_identifier == 's')
@@ -504,6 +511,7 @@ int main( int argc, char** argv )
         struct rtl_rec_struct *rtl_rec = &rtl_receivers[i];
         rtl_rec->buff_ind=0;        
         rtl_rec->gain = config.gain;
+        rtl_rec->agc = 0;
         rtl_rec->center_freq = config.center_freq;
         rtl_rec->sample_rate = config.sample_rate;
         rtl_rec->buffer = malloc(NUM_BUFF * buffer_size * sizeof(uint8_t));      
@@ -746,9 +754,29 @@ int main( int argc, char** argv )
                     else{
                         log_info("Gain change at ch: %d, gain %d",i, new_gains[i]);
                         rtl_rec->gain = new_gains[i];
+                        rtl_rec->agc = 0;
                     }
                 }
                 gain_change_flag=0;
+            }
+            /* Enable AGC request */
+            if (agc_change_flag == 1)
+            {
+                for (int i = 0; i < ch_no; i++)
+                {
+                    rtl_rec = &rtl_receivers[i];
+                    if (rtlsdr_set_tuner_gain_mode(rtl_rec->dev, 0))
+                    {
+                        log_error("Failed to set AGC state: %s",
+                                  strerror(errno));
+                    }
+                    else
+                    {
+                        log_info("Enabled AGC at ch: %d", i);
+                        rtl_rec->agc = 1;
+                    }
+                }
+                agc_change_flag = 0;
             }
             /* Sampling frequency correction flag */
             if(fs_correction_flag==1)

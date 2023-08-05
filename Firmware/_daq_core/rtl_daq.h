@@ -85,7 +85,7 @@ struct hdaq_im_msg_struct {
 };
 
 struct rtl_rec_struct {
-    int dev_ind, gain;
+    int dev_ind, gain, agc;
     rtlsdr_dev_t *dev;
     uint8_t *buffer;   
     unsigned long long buff_ind;
