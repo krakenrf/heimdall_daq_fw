@@ -80,6 +80,29 @@ def pack_msg_set_gain(module_identifier, gains):
         msg_byte_array +=pack('b',0)    
     return msg_byte_array
 
+
+def pack_msg_enable_agc(module_identifier):
+    """
+        Prepares the byte array of an inter-module ZMQ message for enabling
+        automatic gain control.
+
+        Parameters:
+        -----------
+            :param: module_identifier: Source module id
+
+        Return:
+        -------
+            Assembled message structure in byte array
+    """
+    msg_length = 128 # Total message length 128 byte
+    msg_byte_array  = pack("b", module_identifier) # 1byte
+    msg_byte_array += 'a'.encode('ascii') # 1 byte
+    for _ in range(msg_length-1-1):
+        msg_byte_array +=pack('b',0)
+
+    return msg_byte_array
+
+
 def pack_msg_noise_source_ctr(module_identifier, state):
     """
         Prepares the byte array of an inter-module ZMQ message for internal noise source control
@@ -110,7 +133,7 @@ def pack_msg_noise_source_ctr(module_identifier, state):
 def pack_msg_sample_freq_tune(module_identifier, fs_ppm_offsets):
     """
         Prepares the byte array of an inter-module ZMQ message for sampling frequency ppm offset seting.
-        
+
         Parameters:
         -----------
             :param: module_identifier: Source module id
@@ -121,7 +144,7 @@ def pack_msg_sample_freq_tune(module_identifier, fs_ppm_offsets):
 
         Return:
         -------
-            Assembled message structure in byte array 
+            Assembled message structure in byte array
     """    
     msg_length = 128 # Total message length 128 byte
     msg_byte_array  = pack("b", module_identifier) # 1byte
