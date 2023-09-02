@@ -24,7 +24,7 @@ If a premade image does not exist for your computing device, you can use one of 
 
 ### Manual Step by Step Install
 
-We recommend using the install script if you are installing to a fresh system instead of doing this sytep by step install. However, if you are having problems doing the step by step install may help you figure out what is going wrong.
+We recommend using the install script if you are installing to a fresh system instead of doing this step by step install. However, if you are having problems doing the step by step install may help you figure out what is going wrong.
 
 This code should run on any Linux system running on a aarch64(ARM64) or x86_64 systems. 
 
