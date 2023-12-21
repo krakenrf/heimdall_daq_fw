@@ -8,9 +8,11 @@ Should also be compatible with other systems including x86, but a system with at
 
 Heimdall is the data acquisition software for KrakenSDR. It needs to be used together with DSP software like our direction finding or GNU Radio software.
 
-If you are running a Raspberry Pi 4 we recommend starting with our ready to use image at https://github.com/krakenrf/krakensdr_doa/releases/.
+If you are running a Raspberry Pi 4/5 or Orange Pi 5B we recommend starting with our ready to use images at https://mega.nz/folder/8T1jiIzR#_1Ujs4Eoy0wdRib9eHCVSg
 
 This image contains heimdall and the direction finding code. The direction finding software autostarts on boot if the KrakenSDR is plugged in and powered.
+
+Follow the installation guide on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/02.-Direction-Finding-Quickstart-Guide
 
 Alternatively, if you are on another system see our Wiki at for Docker and Virtual Box options https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts, or see below for manual install information.
 
