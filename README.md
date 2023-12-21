@@ -10,7 +10,7 @@ Heimdall is the data acquisition software for KrakenSDR. It needs to be used tog
 
 If you are running a Raspberry Pi 4/5 or Orange Pi 5B we recommend starting with our ready to use images at https://mega.nz/folder/8T1jiIzR#_1Ujs4Eoy0wdRib9eHCVSg
 
-This image contains heimdall and the direction finding code. The direction finding software autostarts on boot if the KrakenSDR is plugged in and powered.
+These images contain heimdall and the direction finding code. The direction finding software autostarts on boot if the KrakenSDR is plugged in and powered.
 
 Follow the installation guide on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/02.-Direction-Finding-Quickstart-Guide
 
