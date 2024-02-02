@@ -230,7 +230,7 @@ int main(int argc, char **argv)
         FATAL_ERR("FIR filter coefficients initialization failed")
     }
 
-    /* Initializing FIR filter on X86-64*/
+    /* Initializing FIR filter */
     KFR_FILTER_F32 *fir_filter_plan = kfr_filter_create_fir_plan_f32(fir_coeffs, tap_size);
     uint64_t cpi_index = -1;
     void *frame_ptr;
@@ -285,7 +285,7 @@ int main(int argc, char **argv)
                     if (filter_reset)
                         for (int ch_index = 0; ch_index < iq_header->active_ant_chs; ch_index++)
                         {
-                            // For downsampling  - X86
+                            // For downsampling
                             int out_sample_index = 0;
                             int dec_index = 0;
                             // De-interleaving input data
@@ -298,8 +298,7 @@ int main(int argc, char **argv)
                             kfr_filter_process_f32(fir_filter_plan, fir_output_buffer_i, fir_input_buffer_i, iq_header->cpi_length * dec);
                             kfr_filter_process_f32(fir_filter_plan, fir_output_buffer_q, fir_input_buffer_q, iq_header->cpi_length * dec);
 
-                            // Re-interleave output data on ARM devices
-                            // Downsample and re-interleave output data on X86
+                            // Downsample and re-interleave output data
                             for (int sample_index = 0; sample_index < iq_header->cpi_length * dec; sample_index++)
                             {
                                 dec_index = (dec_index + 1) % dec; // when zero the sample is forwarded
