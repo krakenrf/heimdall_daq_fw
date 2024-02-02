@@ -67,31 +67,18 @@ Restart the system
 sudo reboot
 ```
 
-3. [ARM]  Install the Ne10 DSP library for ARM devices
-    
-For ARM 64-bit (e.g. Running 64-Bit Raspbian OS on Pi 4) *More info on building Ne10: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
-
-```
-git clone https://github.com/krakenrf/Ne10
-cd Ne10
-mkdir build
-cd build
-cmake -DNE10_LINUX_TARGET_ARCH=aarch64 -DGNULINUX_PLATFORM=ON -DCMAKE_C_FLAGS="-mcpu=native -Ofast -funsafe-math-optimizations" ..
-make
- ```
- 
-3. [X86_64] Install the KFR DSP library 
+3. Install the KFR version >= 6 DSP library 
 ```bash
 sudo apt-get install clang
 ```
 Build and install the library
 ```bash
 cd
-git clone https://github.com/krakenrf/kfr
+git clone --branch v6 https://github.com/krakenrf/kfr
 cd kfr
 mkdir build
 cd build
-cmake -DENABLE_CAPI_BUILD=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
+cmake -DKFR_ENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 

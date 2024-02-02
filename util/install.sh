@@ -23,25 +23,16 @@ cd ..
 echo "6/3 Disable built-in rtl-sdr driver"
 echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.conf
 echo "6/4 Install SIMD FIR filter DSP library"
-
-HOST_ARCH=$(uname -m)
-if [ "$HOST_ARCH" = "x86_64" ]; then
-    echo "X86 64 platform."
-elif [ "$HOST_ARCH" = "armv7l" ]; then
-    git clone https://github.com/projectNe10/Ne10
-    cd Ne10
-    mkdir build
-    cd build
-    export NE10_LINUX_TARGET_ARCH=armv7 
-    cmake -DGNULINUX_PLATFORM=ON ..     
-    make
-    cp modules/libNE10.a ../../heimdall_daq_fw/Firmware/_daq_core
-    cd ..
-    cd ..    
-else
-    echo "Architecture not recognized!"
-    exit
-fi
+git clone --branch v6 --single-branch 'https://github.com/kfrlib/kfr.git'
+mkdir -p "kfr/build"
+cd "kfr/build"
+cmake -Wno-dev -GNinja -DKFR_ENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
+ninja
+sudo mkdir -p '/usr/include/kfr'
+cd ..
+sudo cp -v "build/lib/"* '/usr/lib'
+sudo cp -v "include/kfr/capi.h" '/usr/include/kfr'
+cd ..
 echo "6/5 Install the required python3 packages"
 sudo apt install python3-pip
 sudo python3 -m pip install numpy

@@ -26,27 +26,17 @@
    
     echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.conf
 
-#4-ARM. Install the Ne10 library for ARM devices
-    # More info on the Ne10 building: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10
-    git clone https://github.com/projectNe10/Ne10
-    cd Ne10
-    mkdir build
-    cd build
-    export NE10_LINUX_TARGET_ARCH=armv7 # Set the target architecture (can also be "aarch64")
-    cmake -DGNULINUX_PLATFORM=ON ..     # Run CMake to generate the build files
-    make
-    # copy "NE10_PATH/build/modules/libNE10.a" to "Firmware/_daq_core/'
-# 4-X86. Install the KFR library 
+#4. Install the KFR library version >= 6
     #-> Config compiler
     sudo apt-get install clang
     sudo update-alternatives --config c++
     #-> Select clang++
 
     # More info on the KFR library building: https://github.com/kfrlib/kfr/blob/master/README.md#usage
-    git clone https://github.com/kfrlib/kfr
+    git clone --branch v6 https://github.com/kfrlib/kfr
     mkdir build
     cd build
-    cmake -DENABLE_CAPI_BUILD=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
+    cmake -DKFR_ENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
     make
     sudo make install
     sudo ldconfig
