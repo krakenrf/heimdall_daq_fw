@@ -23,7 +23,7 @@ cd ..
 echo "6/3 Disable built-in rtl-sdr driver"
 echo 'blacklist dvb_usb_rtl28xxu' | sudo tee --append /etc/modprobe.d/blacklist-dvb_usb_rtl28xxu.conf
 echo "6/4 Install SIMD FIR filter DSP library"
-git clone --branch v6 --single-branch 'https://github.com/kfrlib/kfr.git'
+git clone --single-branch 'https://github.com/kfrlib/kfr.git'
 mkdir -p "kfr/build"
 cd "kfr/build"
 cmake -Wno-dev -GNinja -DKFR_ENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
