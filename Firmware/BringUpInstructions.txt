@@ -33,7 +33,7 @@
     #-> Select clang++
 
     # More info on the KFR library building: https://github.com/kfrlib/kfr/blob/master/README.md#usage
-    git clone --branch v6 https://github.com/kfrlib/kfr
+    git clone https://github.com/kfrlib/kfr
     mkdir build
     cd build
     cmake -DKFR_ENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
