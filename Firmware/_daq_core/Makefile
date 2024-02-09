@@ -4,9 +4,9 @@ CC=gcc
 #CFLAGS=-Wall -std=gnu99 -march=native -O2 -I.
 
 # Optimized C-flags for Pi 4
-CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
+#CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
 # Uncomment if you are using third party switches from ckoval on a Rpi device and have pigpio installed
-PIGPIO=-lpigpio -DUSEPIGPIO
+#PIGPIO=-lpigpio -DUSEPIGPIO
 
 # Uncomment if you installed GCC 11.2
 #CC=/usr/local/bin/gcc
