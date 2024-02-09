@@ -337,6 +337,8 @@ class HWC():
                     for m in range(self.M):
                         self.gains[m] = self.valid_gains.index(params[m])
                     self._change_gains()
+                # Setting gain implies disabling AGC
+                self.agc = False
             except ValueError:
                 self.logger.error("Improper gain value {:d}".format(params[m]))
         elif command == "AGC ":

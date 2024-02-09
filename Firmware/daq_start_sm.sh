@@ -21,7 +21,7 @@ echo -e "\e[33mConfig file check bypassed [ WARNING ]\e[39m"
 sudo sysctl -w kernel.sched_rt_runtime_us=-1
 
 # Read config ini file
-out_data_iface_type=$(awk -F "=" '/out_data_iface_type/ {print $2}' daq_chain_config.ini)
+out_data_iface_type=$(awk -F'=' '/out_data_iface_type/ {gsub (" ", "", $0); print $2}' daq_chain_config.ini)
 
 # (re) create control FIFOs
 rm _data_control/fw_decimator_in 2> /dev/null
