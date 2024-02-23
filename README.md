@@ -78,26 +78,9 @@ git clone https://github.com/krakenrf/kfr
 cd kfr
 mkdir build
 cd build
-cmake -DKFR_ENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
+cmake -DENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
 make
-```
-
-Copy the built library over to the system library folder:
-
-```
-sudo cp ~/kfr/build/lib/* /usr/local/lib
-```
-
-Copy the include file over to the system includes folder:
-
-```
-sudo mkdir /usr/include/kfr
-sudo cp ~/kfr/include/kfr/capi.h /usr/include/kfr
-```
-
-Run ldconfig to reset library cache:
-
-```
+sudo make install
 sudo ldconfig
 ```
 
@@ -178,11 +161,6 @@ Copy librtlsdr library and includes to the _daq_core folder
 cp ~/librtlsdr/build/src/librtlsdr.a .
 cp ~/librtlsdr/include/rtl-sdr.h .
 cp ~/librtlsdr/include/rtl-sdr_export.h .
-```
-
-[ARM] If you are on an ARM device, copy the libNe10.a library over to _daq_core
-```
-cp ~/Ne10/build/modules/libNE10.a .
 ```
 
 [PI 4 ONLY] If you are using a KerberosSDR with third party switches by Corey Koval, or equivalent, make sure you uncomment the line `PIGPIO=-lpigpio -DUSEPIGPIO` in the Makefile. If not, leave it commented out.
