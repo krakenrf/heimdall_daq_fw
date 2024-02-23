@@ -74,7 +74,7 @@ sudo apt-get install clang
 Build and install the library
 ```bash
 cd
-git clone https://github.com/krakenrf/kfr
+git clone https://github.com/kfrlib/kfr
 cd kfr
 mkdir build
 cd build
