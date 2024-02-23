@@ -78,7 +78,7 @@ git clone https://github.com/kfrlib/kfr
 cd kfr
 mkdir build
 cd build
-cmake -DENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
+cmake -DKFR_ENABLE_CAPI_BUILD=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release ..
 make
 sudo make install
 sudo ldconfig
