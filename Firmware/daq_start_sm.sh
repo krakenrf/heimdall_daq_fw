@@ -67,13 +67,13 @@ echo '3' | sudo tee /proc/sys/vm/drop_caches > /dev/null
 # Check ports(IQ server:5000, Hardware controller:5001)
 while true; do
     port_ready=1
-    lsof -i:5000 >/dev/null
+	ss -lnp | grep -q :5000
     out=$?
     if test $out -ne 1
     then
         port_ready=0
     fi
-    lsof -i:5001 >/dev/null
+	ss -lnp | grep -q :5001
     out=$?
     if test $out -ne 1
     then
