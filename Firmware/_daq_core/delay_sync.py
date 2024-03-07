@@ -40,8 +40,9 @@ from configparser import ConfigParser
 import zmq
 import skrf as rf
 
-import numba as nb
-from numba import jit, njit
+# TODO: Revert numba acceleration usage
+#import numba as nb
+#from numba import jit, njit
 
 # Import HeIMDALL modules
 from iq_header import IQHeader
@@ -799,14 +800,14 @@ class delaySynchronizer():
             # -> Inform the preceeding block that we have finished the processing
             self.in_shmem_iface.send_ctr_buff_ready(active_buff_index_dec)
 
-@njit(fastmath=True, cache=True)
+#@njit(fastmath=True, cache=True)
 def correct_iq(iq_samples_in, iq_samples_out, iq_corrections, M):
     for m in range(M):
         iq_samples_out[m,:] = (iq_samples_in[m,:]-np.mean(iq_samples_in[m,:]))*iq_corrections[m]
 
     return iq_samples_out
 
-@njit(fastmath=True, cache=True)
+#@njit(fastmath=True, cache=True)
 def copy_iq(iq_samples_in, iq_samples_out, M):
     for m in range(M):
         iq_samples_out[m,:] = iq_samples_in[m,:]

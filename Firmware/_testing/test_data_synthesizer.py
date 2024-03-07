@@ -24,14 +24,18 @@
 	along with this program.  If not, see <https://www.gnu.org/licenses/>.                
 
 """
+# Import built-in packages
 import os
 import sys
 import time
+import logging
+
+# Import third-party packages
 import numpy as np
 from struct import pack, unpack
 from configparser import ConfigParser
-import logging
 from threading import Thread
+import zmq
 
 
 # Import IQ header module
@@ -44,7 +48,7 @@ from iq_header import IQHeader
 from pyargus.directionEstimation import gen_scanning_vectors
 
 #TODO: Use mutexes for the control variables
-class FIFO_rd_thread(Thread):
+class ctrlThread(Thread):
     """
     Description:
     ------------
@@ -63,12 +67,11 @@ class FIFO_rd_thread(Thread):
         Thread.__init__(self)
         self.M = ch_no
         self.logger=logging.getLogger(__name__)
-        self.ctr_fifo_descriptor = open("_data_control/rec_control_fifo", 'rb')
-        if self.ctr_fifo_descriptor is not None:
-            self.logger.debug("Control FIFO succesfully opened, waiting for ctr messages")
-        else:
-            self.logger.error("Failed to open control FIFO")
         
+        context = zmq.Context()
+        self.daq_socket = context.socket(zmq.REP)
+        self.daq_socket.bind("tcp://127.0.0.1:1130")
+
         # TODO: Do not store internal system parameters here
         self.gains = [0]*self.M
         self.rf_center_freq = 0
@@ -76,34 +79,51 @@ class FIFO_rd_thread(Thread):
         self.en_dummy_frame = 0
         
     def run(self):
-        while(True):
-            cmd = self.ctr_fifo_descriptor.read(1)
-            self.logger.debug("Command character received: "+cmd.decode())
+        exit_flag = 0
+        while(~exit_flag):
+            msg_byte_array = self.daq_socket.recv()                        
+            module_identifier = unpack("b", msg_byte_array[0:1])
+            command_identifier = msg_byte_array[1:2].decode()
             
-            if cmd.decode() == 'c':                
-                self.logger.info("Ctr FIFO: Center frequency control message")
-                center_freq_byte = self.ctr_fifo_descriptor.read(4)
-                self.rf_center_freq = unpack("I", center_freq_byte)[0]                                                
+            self.logger.debug(f"Module identifier: {module_identifier}")
+            self.logger.debug(f"Command identifier: {command_identifier}")
+            
+            if command_identifier == 'c':
+                self.logger.info("Ctr FIFO: Center frequency control request")                
+                self.rf_center_freq = unpack("I", msg_byte_array[2:6])[0]                                           
                 self.logger.debug("Center frequency: {:.2f} MHz".format(self.rf_center_freq/10**6))
 
-
-            if cmd.decode() == 'g':                
-                self.logger.info("Ctr FIFO: Gain control message")
-                gain_bytes = self.ctr_fifo_descriptor.read(self.M*4)
+            if command_identifier == 'g':                
+                self.logger.info("Ctrl request: Gain control request")
+                gain_bytes = msg_byte_array[2:2+self.M*4]
                 self.gains = unpack("I"*self.M, gain_bytes)                                
                 for m in range(self.M):
                     self.logger.debug("Channel: {:d}, Gain:{:d} /10 dB".format(m, self.gains[m]))
                 
-            elif cmd.decode() == 'n':
-                self.logger.info("Ctr FIFO: Enabling noise source")
-                self.noise_source_state = 1
-
-            elif cmd.decode() == 'f':
-                self.logger.info("Ctr FIFO: Disabling noise source")
-                self.noise_source_state = 0
+            elif command_identifier == 'n':                
+                if unpack("b", msg_byte_array[2:3])[0] == 1:
+                    self.logger.info("Noise source is enabled")
+                    self.noise_source_state = 1
+                else:
+                    self.logger.info("Noise source is disabled")
+                    self.noise_source_state = 0
             
-            self.en_dummy_frame = 1
+            elif command_identifier == 'r':
+                self.logger.warning("Ctrl request: Tuner reconfiguration is not implemented yet")
+           
+            elif command_identifier == 's':
+                self.logger.warning("Sampling frequency control is not implemented yet")
 
+            elif command_identifier == 'a':
+                self.logger.warning("Ctrl request: Automatic gain control is not implemented yet")
+
+            elif command_identifier == 'h': 
+                self.logger.info("Ctrl request: Halt request")
+                exit_flag = 1
+
+            self.en_dummy_frame = 1
+            
+            self.daq_socket.send("ok".encode()) 
 
 ####################################
 #           PARAMETERS 
@@ -127,8 +147,8 @@ rf_freq = parser.getint('daq','center_freq') # Only used in the correspondig hea
 
 # Synchronization related parameters
 delays = [0]*M 
-delays [1] = 10
-delays [3] = 30
+delays [1] = 0
+delays [3] = 0
 
 phase_diffs = [0]*M 
 phase_diffs = [-10, 0, 20, 20, 40] # deg
@@ -243,9 +263,12 @@ iq_header.noise_source_state   = 0
 logger.info("Decimation ratio: {:d}".format(R))
 logger.debug("IQ header size: {:d}".format(len(iq_header.encode_header())))
 
-FIFO_rd_thread_inst0 = FIFO_rd_thread(M)
-FIFO_rd_thread_inst0.rf_center_freq = rf_freq
-FIFO_rd_thread_inst0.start()
+if (np.array(delays)==0).any():
+    logger.warning("Delay compensation is not simulated properly above version 3.1!.")
+
+ctrl_thread_inst0 = ctrlThread(M)
+ctrl_thread_inst0.rf_center_freq = rf_freq
+ctrl_thread_inst0.start()
 
 ####################################
 #            Simulation
@@ -320,9 +343,9 @@ try:
         internal_noise_multiblock[start_index:start_index+N_daq] = internal_noise[0:N_daq]
         
         # Dummy frame control
-        if FIFO_rd_thread_inst0.en_dummy_frame:
+        if ctrl_thread_inst0.en_dummy_frame:
             en_dummy_frame = True
-            FIFO_rd_thread_inst0.en_dummy_frame = False
+            ctrl_thread_inst0.en_dummy_frame = False
             dummy_frame_cntr = 0        
         
         # Pack coherent multichannel signal array
@@ -387,7 +410,7 @@ try:
             ####################################### 
             
             # Add Internal coherent noise source signal if the noise source is enabled
-            if FIFO_rd_thread_inst0.noise_source_state == 1:
+            if ctrl_thread_inst0.noise_source_state == 1:
                 if b%2 == 0:
                     raw_sig_m[0:delays[m]]     += internal_noise_multiblock[2*N_daq-delays[m]:2*N_daq] \
                                                * 10**(power_diffs[m]/20) \
@@ -446,7 +469,7 @@ try:
                 iq_header.frame_type = IQHeader.FRAME_TYPE_DUMMY
                 if m==0 :logging.info("Frame type: Dummy")  
             else:
-                if FIFO_rd_thread_inst0.noise_source_state == 1: # Calibration Frame
+                if ctrl_thread_inst0.noise_source_state == 1: # Calibration Frame
                     iq_header.noise_source_state   = 1
                     iq_header.frame_type           = IQHeader.FRAME_TYPE_CAL
                     iq_header.data_type            = 1
@@ -458,9 +481,9 @@ try:
                     if m==0 : logging.info("Frame type: Data")  
             
             # Update gain status in the header        
-            iq_header.if_gains[m] = FIFO_rd_thread_inst0.gains[m]                  
+            iq_header.if_gains[m] = ctrl_thread_inst0.gains[m]                  
             # Update center frequency field in the header
-            iq_header.rf_center_freq = int(FIFO_rd_thread_inst0.rf_center_freq+sig_freq)            
+            iq_header.rf_center_freq = int(ctrl_thread_inst0.rf_center_freq+sig_freq)            
             
             if (raw_sig_m.real == 1).any():
                 iq_header.adc_overdrive_flags |= 1<<m
