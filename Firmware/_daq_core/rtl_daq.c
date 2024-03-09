@@ -698,9 +698,11 @@ int main( int argc, char** argv )
                     rtl_rec = &rtl_receivers[i];
                     rd_buff_ind = read_buff_ind % NUM_BUFF;                                              
                     fwrite(rtl_rec->buffer + buffer_size * rd_buff_ind, 1, buffer_size, stdout);
-                    /*                    for(int m = 0; m < TBD_MIRROR_CNT; m++) {
-                        daq_mirrors[i][m]->cache_ch_data();
-                        }*/
+                    for(int m = 0; m < DAQ_MIRROR_CNT; m++) {
+                        daq_mirrors[i][m]->copy_ch_data(daq_mirrors[i][m],
+                                                rtl_rec->buffer + buffer_size * rd_buff_ind,
+                                                buffer_size);
+                    }
                 }
             }
             if(overdrive_flags !=0)
@@ -885,7 +887,7 @@ int main( int argc, char** argv )
             return -1;
         }
         /*        for(int m = 0; m < TBD_MIRROR_CNT; m++) {
-            daq_mirrors[i][m]->stop_ch_mirror();
+            daq_mirrors[i][m]->free();
             }*/
         pthread_join(rtl_rec->async_read_thread, NULL);
         free(rtl_rec->buffer);

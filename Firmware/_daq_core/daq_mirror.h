@@ -5,7 +5,7 @@ typedef struct daq_mirror dm_t;
 
 struct daq_mirror {
     int32_t (*start)(dm_t *dm);
-    int32_t (*cache_ch_data)(dm_t *dm);
+    int32_t (*copy_ch_data)(dm_t *dm, uint8_t *ptr, size_t len);
     void    (*free)(dm_t *dm);
 
     void    *priv_data;
