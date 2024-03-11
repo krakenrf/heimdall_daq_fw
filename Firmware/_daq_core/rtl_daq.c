@@ -50,11 +50,13 @@
 #include "rtl_daq.h"
 #include "iq_header.h"
 
+#include "daq_mirror_rtl_tcp.h"
+
 #ifdef USEPIGPIO
 #include <pigpio.h>
 #endif
 
-#define NUM_BUFF 8  // Number of buffers used in the circular, coherent read buffer
+#define NUM_BUFF 64  // Number of buffers used in the circular, coherent read buffer
 #define CFN "_data_control/rec_control_fifo" // Receiver control FIFO name 
 #define ASYNC_BUF_NUMBER 12// Number of buffers used by the asynchronous read 
 #define FS_CORRECTION_KEEP_LIMIT 0.008 // Above this ppm offset the tuning is not terminated after 1 cal. frame
@@ -481,9 +483,11 @@ int main( int argc, char** argv )
         ctr_channel_dev_index=0;
     }
 
+    #define DAQ_MIRROR_CNT 1
     /* Allocation */    
     struct iq_header_struct* iq_header = calloc(1, sizeof(struct iq_header_struct));
-    
+    dm_t *daq_mirrors[ch_no][DAQ_MIRROR_CNT];
+
     new_gains          = calloc(ch_no, sizeof(*new_gains));
     new_fs_corrections = calloc(ch_no, sizeof(*new_fs_corrections));
     
@@ -492,6 +496,8 @@ int main( int argc, char** argv )
     {
         struct rtl_rec_struct *rtl_rec = &rtl_receivers[i];
         memset(rtl_rec, 0, sizeof(struct rtl_rec_struct));
+
+        daq_mirrors[i][0] = dm_rtl_tcp_new(1234 + i);
 
         // Get device index by serial number
         sprintf(dev_serial, "%d", 1000+i);
@@ -584,7 +590,10 @@ int main( int argc, char** argv )
     pthread_barrier_init(&rtl_init_barrier, NULL, ch_no);
     /* Spawn reader threads */
     for(int i=0; i<ch_no; i++)
-    {       
+    {
+        for(int m = 0; m < DAQ_MIRROR_CNT; m++) {
+            daq_mirrors[i][m]->start(daq_mirrors[i][m]);
+        }
         pthread_create(&rtl_receivers[i].async_read_thread, NULL, read_thread_entry, &rtl_receivers[i]);
     }
 
@@ -688,7 +697,12 @@ int main( int argc, char** argv )
                 {                
                     rtl_rec = &rtl_receivers[i];
                     rd_buff_ind = read_buff_ind % NUM_BUFF;                                              
-                    fwrite(rtl_rec->buffer + buffer_size * rd_buff_ind, 1, buffer_size, stdout);                
+                    fwrite(rtl_rec->buffer + buffer_size * rd_buff_ind, 1, buffer_size, stdout);
+                    for(int m = 0; m < DAQ_MIRROR_CNT; m++) {
+                        daq_mirrors[i][m]->copy_ch_data(daq_mirrors[i][m],
+                                                rtl_rec->buffer + buffer_size * rd_buff_ind,
+                                                buffer_size);
+                    }
                 }
             }
             if(overdrive_flags !=0)
@@ -871,7 +885,10 @@ int main( int argc, char** argv )
         {
             log_fatal("Async read stop failed: %s", strerror(errno));
             return -1;
-        }        
+        }
+        for(int m = 0; m < DAQ_MIRROR_CNT; m++) {
+            daq_mirrors[i][m]->free(daq_mirrors[i][m]);
+        }
         pthread_join(rtl_rec->async_read_thread, NULL);
         free(rtl_rec->buffer);
 
