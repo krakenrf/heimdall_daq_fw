@@ -886,9 +886,9 @@ int main( int argc, char** argv )
             log_fatal("Async read stop failed: %s", strerror(errno));
             return -1;
         }
-        /*        for(int m = 0; m < TBD_MIRROR_CNT; m++) {
-            daq_mirrors[i][m]->free();
-            }*/
+        for(int m = 0; m < DAQ_MIRROR_CNT; m++) {
+            daq_mirrors[i][m]->free(daq_mirrors[i][m]);
+        }
         pthread_join(rtl_rec->async_read_thread, NULL);
         free(rtl_rec->buffer);
 
