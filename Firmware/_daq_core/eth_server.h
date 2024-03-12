@@ -35,7 +35,7 @@
 #include <errno.h>
 #include "log.h"
 
-#define IQ_SERVER_PORT  	    5000
+#define IQ_SERVER_PORT  	    8000
 
 int iq_stream_con(int * sockets)
 {

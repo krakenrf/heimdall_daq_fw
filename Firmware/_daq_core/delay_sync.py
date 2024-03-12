@@ -246,7 +246,7 @@ class delaySynchronizer():
         if not self.in_shmem_iface.init_ok:
             self.logger.critical("Shared memory (Decimator) initialization failed, exiting..")
             return -1
-        
+
         # Open shared memory interface towards the iq server module
         if self.N >= self.N_proc: out_shmem_size = int(1024+self.N*2*self.M*(32/8))
         else: out_shmem_size = int(1024+self.N_proc*2*self.M*(32/8))

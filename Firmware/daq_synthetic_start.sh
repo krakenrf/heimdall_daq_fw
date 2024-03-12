@@ -68,7 +68,7 @@ python3 _testing/test_data_synthesizer.py 2>_logs/synthetic.log | \
 _daq_core/rebuffer.out 0 2> _logs/rebuffer.log &
 
 # Decimator - Thread 1
-chrt -f 99 _daq_core/decimate.out 2> _logs/decimator.log &
+_daq_core/decimate.out 2> _logs/decimator.log &
 
 # Delay synchronizer - Thread 2
 python3 _daq_core/delay_sync.py 2> _logs/delay_sync.log &
