@@ -68,6 +68,8 @@ class HWC():
         self.gain_lock_interval = 0 # Required num. of frames to finish gain tuning
         self.unified_gain_control = True # Gain values will be equal for all the receivers
         self.last_gains=[0]*self.M # Stores the gain values to reset them after calibration
+        self.agc=False
+        self.last_agc=False
         
         # Support for calibration track mode 
         self.cal_track_mode = 0
@@ -237,6 +239,16 @@ class HWC():
             self.in_shmem_iface.destory_sm_buffer()
             
         self.logger.info("Module interfaces are closed")
+
+
+    def _enable_agc(self):
+        if self.agc:
+            msg_byte_array = inter_module_messages.pack_msg_enable_agc(self.module_identifier)
+            self.rtl_daq_socket.send(msg_byte_array)
+            reply = self.rtl_daq_socket.recv()
+            self.logger.debug(f"Received reply: {reply}")
+
+
     def _change_gains(self):
         """
             Sends gain tuning request to the receiver module through the 
@@ -325,8 +337,17 @@ class HWC():
                     for m in range(self.M):
                         self.gains[m] = self.valid_gains.index(params[m])
                     self._change_gains()
+                # Setting gain implies disabling AGC
+                self.agc = False
             except ValueError:
                 self.logger.error("Improper gain value {:d}".format(params[m]))
+        elif command == "AGC ":
+            if self.noise_source_state: # The noise source is turned on, we are only storing the AGC state
+                self.last_agc = True
+            else:
+                self.agc = True
+                self._enable_agc()
+
     
     def _control_noise_source(self, noise_source_state):
         """
@@ -345,6 +366,9 @@ class HWC():
         if noise_source_state:
             self.logger.info("Set gain values to perform calibration") 
             
+            self.last_agc = self.agc
+            self.agc = False
+
             for m in range(self.M):
                 self.last_gains[m]=self.gains[m]
                 self.gains[m]=self.cal_gain_table[1,np.argmin(abs(self.cal_gain_table[0,:]-self.iq_header.rf_center_freq))]
@@ -369,6 +393,10 @@ class HWC():
             for m in range(self.M):                
                 self.gains[m] = self.last_gains[m]
             self._change_gains()
+
+            self.logger.info("Restore AGC state after calibration")
+            self.agc = self.last_agc
+            self._enable_agc()
 
             self.current_state = "STATE_NOISE_CTR_WAIT"
 
@@ -625,7 +653,7 @@ class CtrIfaceServer(threading.Thread):
         """
         ctr_request_condition.acquire()
         command = msg_bytes[0:4].decode()
-
+        self.logger.warning("Got command %s", command)
         if command == "EXIT":
             ctr_request_condition.release()
             return -1
@@ -635,14 +663,14 @@ class CtrIfaceServer(threading.Thread):
             self.logger.info("Received threshold value: {:f}".format(threshold))
             ctr_request.clear()
             ctr_request.append(command)
-            ctr_request.append(threshold)            
+            ctr_request.append(threshold)
 
         elif command == "FREQ":
             frequency = unpack('Q',msg_bytes[4:12])[0]
             self.logger.info("Received frequency value: {:f} Hz".format(frequency))
             ctr_request.clear()
             ctr_request.append(command)
-            ctr_request.append(frequency)            
+            ctr_request.append(frequency)
 
         elif command == "GAIN":
             gains = unpack('I'*self.M, msg_bytes[4:4+4*self.M])
@@ -651,6 +679,11 @@ class CtrIfaceServer(threading.Thread):
             for m in range(self.M):
                 self.logger.info("Received gain values - CH{:d}: {:d} dB x 10".format(m, gains[m]))            
                 ctr_request.append(gains[m])
+
+        elif command == "AGC ":
+            self.logger.info("Received AGC request")
+            ctr_request.clear()
+            ctr_request.append(command)
 
         elif command == "INIT":
             self.logger.info("Inititalization command received")

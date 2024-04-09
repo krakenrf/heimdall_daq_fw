@@ -1,7 +1,7 @@
 # Makefile for compiling the DAQ firmware
 # Author: Tamás Pető, Sándor Bajusz
 CC=gcc
-CFLAGS=-Wall -std=gnu99 -march=native -O2
+CFLAGS=-Wall -std=gnu99 -march=native -O2 -I.
 
 # Optimized C-flags for Pi 4
 #CFLAGS=-Wall -std=gnu99 -mcpu=cortex-a72 -mtune=cortex-a72 -Ofast -funsafe-math-optimizations -funroll-loops
@@ -28,7 +28,7 @@ daq_util:
 	$(CC) $(CFLAGS) -c -o sh_mem_util.o sh_mem_util.c
 
 rtl_daq: iq_header.c log.c ini.c rtl_daq.c rtl_daq.h
-	$(CC) $(CFLAGS) log.o ini.o iq_header.o -o rtl_daq.out rtl_daq.c -lpthread -lrtlsdr -lzmq $(PIGPIO)
+	$(CC) $(CFLAGS) log.o ini.o iq_header.o -o rtl_daq.out rtl_daq.c -lpthread -lzmq $(PIGPIO) -L. -lrtlsdr -lusb-1.0
 
 rebuffer: sh_mem_util.c iq_header.c log.c ini.c rebuffer.c rtl_daq.h
 	$(CC) $(CFLAGS) sh_mem_util.o log.o ini.o iq_header.o -o rebuffer.out rebuffer.c -lrt -lm
