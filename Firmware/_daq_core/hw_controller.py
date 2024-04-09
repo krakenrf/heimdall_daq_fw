@@ -39,6 +39,8 @@ import inter_module_messages
 ctr_request = [] # This list stores the confiuration command and parameters [cmd, param 1, param 2, ..]
 ctr_request_condition = threading.Condition()
 
+# TODO: Remove ADPIS functionality
+# TODO: Remove track lock intervention functionality
 class HWC():
     
     def __init__(self):                 
@@ -353,8 +355,8 @@ class HWC():
         """
             Enables or disables the internal noise of the receiver and set the proper gain values.
             
-            Gain and frequency values are fittet to the hardware of the Kerberos SDR v2
-            You can change here the preset gain values depending on the calibration frequency here!
+            Gain and frequency values are fitted to the hardware of the Kerberos SDR v2
+            You can change here the preset gain values depending on the calibration frequency!
 
             Parameters:
             -----------
