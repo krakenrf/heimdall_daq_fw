@@ -561,7 +561,7 @@ class HWC():
                 #          
                 #------------------------------------------>
                 #   
-                elif self.current_state == "STATE_NOISE_CTR_WAIT":                    
+                elif self.current_state == "STATE_NOISE_CTR_WAIT":                 
                     if self.noise_source_state == self.iq_header.noise_source_state:
                         gain_ctr_ready = True
                         # Check gain states
