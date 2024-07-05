@@ -369,7 +369,7 @@ class HWC():
         elif command == "MRFF":
             print("IN handle control request MRFF")
             self.logger.error("Setting LO Value {:d}".format(params[0]))
-            self.mrf.setFreq(1200)
+            self.mrf.setFreq(params[0])
 
     
     def _control_noise_source(self, noise_source_state):
