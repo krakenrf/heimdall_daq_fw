@@ -34,6 +34,7 @@ from iq_header import IQHeader
 from shmemIface import inShmemIface
 import zmq
 import inter_module_messages
+from morfeus import Morfeus
 
 # Global: Used to communicate between the HWC module and the Control Interface server
 ctr_request = [] # This list stores the confiuration command and parameters [cmd, param 1, param 2, ..]
@@ -105,6 +106,8 @@ class HWC():
         self.logger.info("ADPIS state: {:d}".format(self.en_adpis))
         self.logger.warning("Reference channel index is fixed 0 ")
         self.logger.info("Hardware Controller initialized")
+        
+        self.mrf = Morfeus()
         
     def _read_config_file(self, config_filename):
         """
@@ -227,6 +230,21 @@ class HWC():
             except:
                 logging.error("DAC Controller initialization failed")
         return 0
+        
+        
+        # Find the device
+        self.mrf.findmorfeus()
+
+        self.mrf.setFreq(1000)
+        t.sleep(1)
+        mrf.genMode()
+        t.sleep(1)
+        self.mrf.setCurrent(7)
+        #t.sleep(1)
+
+        #self.mrf.getFreq()
+        #t.sleep(1)
+        #self.mrf.getCur()
     
     def close(self):
         """
@@ -323,7 +341,8 @@ class HWC():
             - GAIN: Sets the IF gain values
 
         """
-        if command == "FREQ":            
+        print("IN handle control request")
+        if command == "FREQ":
             msg_byte_array = inter_module_messages.pack_msg_rf_tune(self.module_identifier, params[0])
             self.rtl_daq_socket.send(msg_byte_array)
             reply = self.rtl_daq_socket.recv()
@@ -347,6 +366,10 @@ class HWC():
             else:
                 self.agc = True
                 self._enable_agc()
+        elif command == "MRFF":
+            print("IN handle control request MRFF")
+            self.logger.error("Setting LO Value {:d}".format(params[0]))
+            self.mrf.setFreq(1200)
 
     
     def _control_noise_source(self, noise_source_state):
@@ -551,6 +574,7 @@ class HWC():
                     ctr_request_condition.acquire()                    
                     if len(ctr_request) !=0 :
                         self.logger.info("Control request: {:s}".format(ctr_request[0]))
+                        print("Calling handle control req")
                         self._handle_control_reqest(ctr_request[0], ctr_request[1:])
                         ctr_request.clear()
                         ctr_request_condition.notify()
@@ -671,6 +695,13 @@ class CtrIfaceServer(threading.Thread):
             ctr_request.clear()
             ctr_request.append(command)
             ctr_request.append(frequency)
+            
+        elif command == "MRFF":
+            frequency = unpack('Q',msg_bytes[4:12])[0]
+            self.logger.info("Received MRF LO value: {:f} Hz".format(frequency))
+            ctr_request.clear()
+            ctr_request.append(command)
+            ctr_request.append(frequency)    
 
         elif command == "GAIN":
             gains = unpack('I'*self.M, msg_bytes[4:4+4*self.M])

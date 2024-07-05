@@ -814,7 +814,11 @@ int main( int argc, char** argv )
             {
                 rtl_rec = &rtl_receivers[ctr_channel_index];                
                 if (noise_source_state == 1){
-	            rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
+	            rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1); // Activate bias tee GPIO
+                
+                // Set wideband switches to bias tee #GPIO1: 1 GPIO2: 0
+                rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 1); 
+                rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
 
                     // Use pigpio to set Pi GPIO for third party Kerberos CKOVAL switches
                     #ifdef USEPIGPIO
@@ -832,6 +836,12 @@ int main( int argc, char** argv )
                 }
                 else if (noise_source_state == 0){
                     rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 0);
+                    
+                    // Set wideband switches to DEFAULT outer ring antennas for now. #GPIO1: 0 GPIO2: 0
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 0); 
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
+                    
+                    
                     //rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
                     //rtlsdr_set_gpio(rtl_rec->dev, 0, 0);
                     log_info("Noise source turned off ");
