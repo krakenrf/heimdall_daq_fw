@@ -129,6 +129,35 @@ def pack_msg_noise_source_ctr(module_identifier, state):
     for m in range(msg_length-1-1-1):    
         msg_byte_array +=pack('b',0)    
     return msg_byte_array
+    
+    
+def pack_msg_array_sel_ctr(module_identifier, array_sel):
+    """
+        Prepares the byte array of an inter-module ZMQ message for KrakenSDR Wideband array selecting.
+        
+        Parameters:
+        -----------
+            :param: module_identifier: Source module id
+            :param: array_sel: 0 - Outer Array, 1 - Center Array, 2 - Inner Array
+
+            :type: module_identifier: int
+            :type: stae: int
+
+        Return:
+        -------
+            Assembled message structure in byte array 
+    """    
+    
+    
+    msg_length = 128 # Total message length 128 byte
+    msg_byte_array  = pack("b", module_identifier) # 1byte
+    msg_byte_array += 'y'.encode('ascii') # 1 byte
+    msg_byte_array += pack('I', array_sel) # 4 byte
+    for m in range(msg_length-1-1-4):    
+        msg_byte_array +=pack('b',0)
+    
+    return msg_byte_array    
+    
 
 def pack_msg_sample_freq_tune(module_identifier, fs_ppm_offsets):
     """

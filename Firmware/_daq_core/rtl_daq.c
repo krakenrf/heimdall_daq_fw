@@ -80,6 +80,8 @@ static pthread_barrier_t rtl_init_barrier;
 int reconfig_trigger=0, exit_flag=0;
 int noise_source_state = 0; // Noise source state is used also to track the calibration frame status!
 int last_noise_source_state = 0;
+int array_select_state = 0;
+int last_array_select_state = 0;
 int gain_change_flag;
 int *new_gains;
 float *new_fs_corrections;
@@ -266,6 +268,25 @@ void * fifo_read_tf(void* arg)
                 noise_source_state = 1;
             }            
         }
+        
+        else if (msg->command_identifier == 'y')
+        {
+            if(msg->parameters[0] == 0)
+            {
+                log_info("Select Outer Array 0");
+                array_select_state = 0;          
+            }
+            else if(msg->parameters[0] == 1){
+                log_info("Select Center Array 1");
+                array_select_state = 1;
+            }   
+            else if(msg->parameters[0] == 2){
+                log_info("Select Inner Array 2");
+                array_select_state = 2;
+            }             
+        }
+        
+        
         /* System halt request */
         else if(msg->command_identifier == 'h')
         {
@@ -451,6 +472,7 @@ int main( int argc, char** argv )
     ch_no = config.num_ch;
     
     log_set_level(config.log_level);
+    
     /* -> Parse bias tree config */
     int en_bias_tee[ch_no];
     char * en_bias_ch_i_str = strtok(config.en_bias_tee_str, ",");    
@@ -577,10 +599,15 @@ int main( int argc, char** argv )
             {log_info("Bias tee on channel: %d is disabled",m);}
 
         struct rtl_rec_struct *rtl_rec = &rtl_receivers[ctr_channel_index];    
-	rtlsdr_set_bias_tee_gpio(rtl_rec->dev, m+1, en_bias_tee[m]);
+        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, m+1, en_bias_tee[m]);
         //rtlsdr_set_gpio(rtl_rec->dev, en_bias_tee[m] , m+1);
+        
+        
+        // Set wideband default outer array first
+        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 0); 
+        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
     }
-
+    
     pthread_barrier_init(&rtl_init_barrier, NULL, ch_no);
     /* Spawn reader threads */
     for(int i=0; i<ch_no; i++)
@@ -808,17 +835,38 @@ int main( int argc, char** argv )
                     fs_correction_flag=0;
                 }
                 fs_reset_cntr ++;
-            }      
+            }
+            if(last_array_select_state != array_select_state)
+            {
+                rtl_rec = &rtl_receivers[ctr_channel_index];
+                if(array_select_state == 0) 
+                {
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 0); 
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
+                }
+                else if (array_select_state == 1) 
+                {
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 1); 
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 1);
+                }
+                else if (array_select_state == 2) 
+                {
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 0); 
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 1);                   
+                }
+                last_array_select_state = array_select_state;
+            }
             /* Noise source switch request */
             if (last_noise_source_state != noise_source_state && config.en_noise_source_ctr==1)
             {
                 rtl_rec = &rtl_receivers[ctr_channel_index];                
                 if (noise_source_state == 1){
-	            rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1); // Activate bias tee GPIO
-                
-                // Set wideband switches to bias tee #GPIO1: 1 GPIO2: 0
-                rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 1); 
-                rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1); // Activate bias tee GPIO
+                    
+                    
+                    // Set wideband switches to noise source input #GPIO1: 1 GPIO2: 0
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 1); 
+                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
 
                     // Use pigpio to set Pi GPIO for third party Kerberos CKOVAL switches
                     #ifdef USEPIGPIO
@@ -837,10 +885,27 @@ int main( int argc, char** argv )
                 else if (noise_source_state == 0){
                     rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 0);
                     
-                    // Set wideband switches to DEFAULT outer ring antennas for now. #GPIO1: 0 GPIO2: 0
-                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 0); 
-                    rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
                     
+                    if(array_select_state == 0) 
+                    {
+                        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 0); 
+                        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
+                    }
+                    else if (array_select_state == 1) 
+                    {
+                        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 1); 
+                        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 1);
+                    }
+                    else if (array_select_state == 2) 
+                    {
+                        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 0); 
+                        rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 1);                   
+                    }
+                    
+                    // Set wideband switches to DEFAULT outer ring antennas for now. #GPIO1: 0 GPIO2: 0
+                    //rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 1, 0); 
+                    //rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 2, 0);
+
                     
                     //rtlsdr_set_bias_tee_gpio(rtl_rec->dev, 0, 1);
                     //rtlsdr_set_gpio(rtl_rec->dev, 0, 0);

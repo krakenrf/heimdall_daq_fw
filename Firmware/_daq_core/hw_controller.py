@@ -367,9 +367,15 @@ class HWC():
                 self.agc = True
                 self._enable_agc()
         elif command == "MRFF":
-            print("IN handle control request MRFF")
-            self.logger.error("Setting LO Value {:d}".format(params[0]))
+            #print("IN handle control request MRFF")
+            #self.logger.error("Setting LO Value {:d}".format(params[0]))
             self.mrf.setFreq(params[0])
+        elif command == "ARRY":
+            print("IN handle control request ARRY param " + str(params[0]))
+            msg_byte_array = inter_module_messages.pack_msg_array_sel_ctr(self.module_identifier, params[0])
+            self.rtl_daq_socket.send(msg_byte_array)
+            reply = self.rtl_daq_socket.recv()
+            self.logger.debug(f"Received reply: {reply}")
 
     
     def _control_noise_source(self, noise_source_state):
@@ -702,7 +708,14 @@ class CtrIfaceServer(threading.Thread):
             ctr_request.clear()
             ctr_request.append(command)
             ctr_request.append(frequency)    
-
+            
+        elif command == "ARRY":
+            array_sel = unpack('Q', msg_bytes[4:12])[0]
+            self.logger.info("Received array selector value: {:f} Hz".format(array_sel))
+            ctr_request.clear()
+            ctr_request.append(command)
+            ctr_request.append(array_sel)        
+            
         elif command == "GAIN":
             gains = unpack('I'*self.M, msg_bytes[4:4+4*self.M])
             ctr_request.clear()
