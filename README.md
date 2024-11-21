@@ -14,9 +14,7 @@ These images contain heimdall and the direction finding code. The direction find
 
 Follow the installation guide on the Wiki at https://github.com/krakenrf/krakensdr_docs/wiki/02.-Direction-Finding-Quickstart-Guide
 
-Alternatively, if you are on another system see our Wiki at for Docker and Virtual Box options [https://github.com/krakenrf/krakensdr_docs/wiki/10.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts](https://github.com/krakenrf/krakensdr_docs/wiki/09.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts
-
-), or see below for manual install information.
+Alternatively, if you are on another system see our Wiki at for Docker and Virtual Box options https://github.com/krakenrf/krakensdr_docs/wiki/09.-VirtualBox,-Docker-Images-and-Install-Scripts#install-scripts, or see below for manual install information.
 
 ## Manual Installation
 
