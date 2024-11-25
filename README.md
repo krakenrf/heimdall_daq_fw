@@ -50,7 +50,7 @@ sudo apt install pigpio
    
 2. Install custom KrakenRF RTL-SDR kernel driver
 ```    
-cd ~
+cd
 git clone https://github.com/krakenrf/librtlsdr
 cd librtlsdr
 sudo cp rtl-sdr.rules /etc/udev/rules.d/rtl-sdr.rules
@@ -73,6 +73,7 @@ sudo reboot
 For ARM 64-bit (e.g. Running 64-Bit Raspbian OS on Pi 4) *More info on building Ne10: https://github.com/projectNe10/Ne10/blob/master/doc/building.md#building-ne10*
 
 ```
+cd
 git clone https://github.com/krakenrf/Ne10
 cd Ne10
 mkdir build
