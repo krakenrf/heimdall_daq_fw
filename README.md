@@ -50,6 +50,7 @@ sudo apt install pigpio
    
 2. Install custom KrakenRF RTL-SDR kernel driver
 ```    
+cd ~
 git clone https://github.com/krakenrf/librtlsdr
 cd librtlsdr
 sudo cp rtl-sdr.rules /etc/udev/rules.d/rtl-sdr.rules
