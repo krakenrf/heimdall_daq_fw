@@ -113,10 +113,10 @@ chrt -f 99 python3 _daq_core/delay_sync.py 2> _logs/delay_sync.log &
 chrt -f 99 sudo env "PATH=$PATH" python3 _daq_core/hw_controller.py 2> _logs/hwc.log &
 # root priviliges are needed to drive the i2c master
 
-if [ $out_data_iface_type = eth ]; then
+if [[ $out_data_iface_type == "eth" ]]; then
     echo "Output data interface: IQ ethernet server"
     chrt -f 99 _daq_core/iq_server.out 2>_logs/iq_server.log &
-elif [ $out_data_iface_type = shmem ]; then
+elif [[ $out_data_iface_type == "shmem" ]]; then
     echo "Output data interface: Shared memory"
 fi
 
