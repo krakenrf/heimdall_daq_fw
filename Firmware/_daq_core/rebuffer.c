@@ -156,12 +156,13 @@ int main(int argc, char* argv[])
     struct shmem_transfer_struct* output_sm_buff = calloc(1, sizeof(struct shmem_transfer_struct));
     if (out_buffer_size >= cal_out_buffer_size)
     {
-        output_sm_buff->shared_memory_size = out_buffer_size*ch_num*sizeof(uint8_t)*2+IQ_HEADER_LENGTH;
+        output_sm_buff->shared_memory_size = out_buffer_size * ch_num * sizeof(uint32_t) * 2 + IQ_HEADER_LENGTH;
     }
     else
     {
-        output_sm_buff->shared_memory_size = cal_out_buffer_size*ch_num*sizeof(uint8_t)*2+IQ_HEADER_LENGTH;
+        output_sm_buff->shared_memory_size = cal_out_buffer_size * ch_num * sizeof(uint32_t) * 2 + IQ_HEADER_LENGTH;
     }
+
     output_sm_buff->io_type = 0; // Output type
     output_sm_buff->drop_mode = drop_mode;
     strcpy(output_sm_buff->shared_memory_names[0], DECIMATOR_IN_SM_NAME_A);
@@ -274,7 +275,7 @@ int main(int argc, char* argv[])
                     memcpy(frame_ptr, iq_header,1024);
                     send_ctr_buff_ready(output_sm_buff, active_buff_ind);
                     log_trace("--> Transfering frame: type: %d, daq ind:[%d]",iq_header->frame_type, iq_header->daq_block_index);
-		    break;
+                    break;
                 case 3: // Frame drop                    
                     break;
                 default:
