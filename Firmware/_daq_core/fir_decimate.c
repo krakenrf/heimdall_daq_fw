@@ -26,7 +26,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
+#if defined(__MACH__)
+#include <stdlib.h>
+#else 
 #include <malloc.h>
+#endif
+
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
@@ -131,10 +137,16 @@ int main(int argc, char **argv)
     
      /* Initializing input shared memory interface */
     struct shmem_transfer_struct* input_sm_buff = calloc(1, sizeof(struct shmem_transfer_struct));
-    if((config.cpi_size*dec)>=config.cal_size)
-    {input_sm_buff->shared_memory_size = config.cpi_size*config.num_ch*dec*4*2+IQ_HEADER_LENGTH;}
+
+    if((config.cpi_size * dec) >= config.cal_size)
+    {
+        input_sm_buff->shared_memory_size = config.cpi_size * dec * config.num_ch * sizeof(uint8_t) * 2 + IQ_HEADER_LENGTH;
+    }
     else
-    {input_sm_buff->shared_memory_size = config.cal_size*config.num_ch*4*2+IQ_HEADER_LENGTH;}
+    {
+        input_sm_buff->shared_memory_size = config.cal_size * config.num_ch * sizeof(uint8_t) * 2 + IQ_HEADER_LENGTH;
+    }
+
     input_sm_buff->io_type = 1; // Input type
     
     strcpy(input_sm_buff->shared_memory_names[0], DECIMATOR_IN_SM_NAME_A);
@@ -223,8 +235,14 @@ int main(int argc, char **argv)
 		
         // Acquire data buffer on the shared memory interface
         active_buff_ind_in = wait_buff_ready(input_sm_buff);
-        if (active_buff_ind_in < 0 ){exit_flag = 1; break;}
-        if (active_buff_ind_in == TERMINATE) {exit_flag = TERMINATE; break;}
+        if (active_buff_ind_in < 0 ){
+            exit_flag = 1;
+            break;
+        }
+        if (active_buff_ind_in == TERMINATE) {
+            exit_flag = TERMINATE;
+            break;
+        }
         iq_header = (struct iq_header_struct*) input_sm_buff->shm_ptr[active_buff_ind_in];
 		input_data_buffer = ((uint8_t *) input_sm_buff->shm_ptr[active_buff_ind_in] )+ IQ_HEADER_LENGTH/sizeof(uint8_t);
         CHK_SYNC_WORD(check_sync_word(iq_header));

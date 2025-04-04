@@ -44,6 +44,7 @@
 #include <sys/time.h>  // Used for latency estimation
 #include <zmq.h>
 
+#include "pthread_barrier.h"
 #include "ini.h"
 #include "log.h"
 #include "rtl-sdr.h"

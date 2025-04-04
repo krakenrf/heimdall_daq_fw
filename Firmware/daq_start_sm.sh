@@ -18,7 +18,15 @@ echo -e "\e[33mConfig file check bypassed [ WARNING ]\e[39m"
 #      exit
 #fi
 
-sudo sysctl -w kernel.sched_rt_runtime_us=-1
+PORT=8000
+
+SYSTEM_OS="$(uname -s)"
+
+if [[ "$SYSTEM_OS" != "Darwin" ]];
+then
+    sudo sysctl -w kernel.sched_rt_runtime_us=-1
+    CMD_PRIO=`chrt -f 99`
+fi
 
 # Read config ini file
 out_data_iface_type=$(awk -F'=' '/out_data_iface_type/ {gsub (" ", "", $0); print $2}' daq_chain_config.ini)
@@ -59,21 +67,28 @@ rm _logs/*.log 2> /dev/null
 
 # The Kernel limits the maximum size of all buffers that libusb can allocate to 16MB by default.
 # In order to disable the limit, you have to run the following command as root:
-sudo sh -c "echo 0 > /sys/module/usbcore/parameters/usbfs_memory_mb"
+if [[ "$SYSTEM_OS" != "Darwin" ]];
+then
+    sudo sh -c "echo 0 > /sys/module/usbcore/parameters/usbfs_memory_mb"
+fi
 
 # This command clear the caches
-echo '3' | sudo tee /proc/sys/vm/drop_caches > /dev/null
+# 
+if [[ "$SYSTEM_OS" != "Darwin" ]];
+then
+    echo '3' | sudo tee /proc/sys/vm/drop_caches > /dev/null
+fi
 
 # Check ports(IQ server:5000, Hardware controller:5001)
 while true; do
     port_ready=1
-    lsof -i:5000 >/dev/null
+    lsof -i:${PORT} >/dev/null
     out=$?
     if test $out -ne 1
     then
         port_ready=0
     fi
-    lsof -i:5001 >/dev/null
+    lsof -i:$((PORT+1)) >/dev/null
     out=$?
     if test $out -ne 1
     then
@@ -83,7 +98,7 @@ while true; do
     then
         break
     else
-        echo "WARN:Ports used by the DAQ chain are not free! (5000 & 5001)"
+        echo "WARN:Ports used by the DAQ chain are not free! (${PORT} & $((PORT+1)))"
         ./daq_stop.sh
         sleep 1
     fi
@@ -100,22 +115,21 @@ fi
 
 # Start main program chain -Thread 0 Normal (non squelch mode)
 echo "Starting DAQ Subsystem"
-chrt -f 99 _daq_core/rtl_daq.out 2> _logs/rtl_daq.log | \
-chrt -f 99 _daq_core/rebuffer.out 0 2> _logs/rebuffer.log &
+$CMD_PRIO _daq_core/rtl_daq.out 2> _logs/rtl_daq.log | $CMD_PRIO _daq_core/rebuffer.out 0 2> _logs/rebuffer.log &
 
 # Decimator - Thread 1
-chrt -f 99 _daq_core/decimate.out 2> _logs/decimator.log &
+$CMD_PRIO _daq_core/decimate.out 2> _logs/decimator.log &
 
 # Delay synchronizer - Thread 2
-chrt -f 99 python3 _daq_core/delay_sync.py 2> _logs/delay_sync.log &
+$CMD_PRIO python3 _daq_core/delay_sync.py 2> _logs/delay_sync.log &
 
 # Hardware Controller data path - Thread 3
-chrt -f 99 sudo env "PATH=$PATH" python3 _daq_core/hw_controller.py 2> _logs/hwc.log &
+$CMD_PRIO sudo env "PATH=$PATH" python3 _daq_core/hw_controller.py 2> _logs/hwc.log &
 # root priviliges are needed to drive the i2c master
 
 if [ $out_data_iface_type = eth ]; then
     echo "Output data interface: IQ ethernet server"
-    chrt -f 99 _daq_core/iq_server.out 2>_logs/iq_server.log &
+    $CMD_PRIO _daq_core/iq_server.out 2>_logs/iq_server.log &
 elif [ $out_data_iface_type = shmem ]; then
     echo "Output data interface: Shared memory"
 fi

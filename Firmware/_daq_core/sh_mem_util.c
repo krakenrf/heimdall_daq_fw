@@ -87,7 +87,7 @@ int wait_buff_free(struct shmem_transfer_struct* sm_buff)
         return 1;    
     else
     { 
-        int read_size=fread(&signal, sizeof(signal), 1, sm_buff->bw_ctr_fifo);
+        int read_size = fread(&signal, sizeof(signal), 1, sm_buff->bw_ctr_fifo);
         switch (read_size) 
         { 
             case 0:  // PIPE empty and errono set EAGAIN
@@ -100,7 +100,7 @@ int wait_buff_free(struct shmem_transfer_struct* sm_buff)
                 } 
                 else 
                 { 
-                    log_error("Backward control FIFO read error");
+                    log_error("Backward control FIFO read error %d", errno);
                     return -1;
                 }
                 break;     
@@ -145,9 +145,12 @@ int wait_buff_ready(struct shmem_transfer_struct* sm_buff)
 int init_out_sm_buffer(struct shmem_transfer_struct* sm_buff) 
 {
     /* Create the shared memory object */
-    sm_buff->shm_fd[0] = shm_open(sm_buff->shared_memory_names[0], O_CREAT | O_RDWR, 0666); 
+    shm_unlink(sm_buff->shared_memory_names[0]);
+    sm_buff->shm_fd[0] = shm_open(sm_buff->shared_memory_names[0], O_CREAT | O_RDWR, 0666);
     CHK_ZERO(sm_buff->shm_fd[0], -1)
-    sm_buff->shm_fd[1] = shm_open(sm_buff->shared_memory_names[1], O_CREAT | O_RDWR, 0666);     
+
+    shm_unlink(sm_buff->shared_memory_names[1]);
+    sm_buff->shm_fd[1] = shm_open(sm_buff->shared_memory_names[1], O_CREAT | O_RDWR, 0666);
     CHK_ZERO(sm_buff->shm_fd[1], -1)    
   
     /* Configure the size of the shared memory object */    
@@ -170,7 +173,7 @@ int init_out_sm_buffer(struct shmem_transfer_struct* sm_buff)
     sm_buff->bw_ctr_fifo= fopen(sm_buff->bw_ctr_fifo_name, "r");
     if (sm_buff->drop_mode)
     {
-         int ret= fcntl(fileno(sm_buff->bw_ctr_fifo), F_SETFL, fcntl(fileno(sm_buff->bw_ctr_fifo), F_GETFL) |  O_NONBLOCK);                               
+        int ret = fcntl(fileno(sm_buff->bw_ctr_fifo), F_SETFL, fcntl(fileno(sm_buff->bw_ctr_fifo), F_GETFL) |  O_NONBLOCK);
         CHK_SUCC(ret, -4);
     }
     
@@ -200,7 +203,7 @@ int init_in_sm_buffer(struct shmem_transfer_struct* sm_buff)
     CHK_SUCC(ret, -3)
 
     /* Create the shared memory object */
-    sm_buff->shm_fd[0] = shm_open(sm_buff->shared_memory_names[0], O_RDWR, 0666); 
+    sm_buff->shm_fd[0] = shm_open(sm_buff->shared_memory_names[0], O_RDWR, 0666);
     CHK_ZERO(sm_buff->shm_fd[0], -4)
     sm_buff->shm_fd[1] = shm_open(sm_buff->shared_memory_names[1], O_RDWR, 0666);     
     CHK_ZERO(sm_buff->shm_fd[1], -4)    
